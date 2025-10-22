@@ -78,6 +78,9 @@ let phase = "submission";
 let cycleStartTime = null;
 let nextPhaseTime = null;
 
+// === PAYMENT TIMEOUT CONFIGURATION ===
+const PAYMENT_TIMEOUT = 10 * 60 * 1000; // 10 minutes timeout for payments
+
 // === TREASURY PRIZE SYSTEM ===
 const TREASURY_BONUS_CHANCE = 500; // 1 in 500 chance
 
@@ -120,6 +123,46 @@ async function getActualTreasuryBalance() {
     return actualTreasuryBalance; // Return current tracked value as fallback
   }
 }
+
+// === CLEAN UP EXPIRED PENDING PAYMENTS ===
+function cleanupExpiredPayments() {
+  const now = Date.now();
+  const expiredPayments = pendingPayments.filter(p => {
+    const createdTime = p.createdAt || cycleStartTime || now;
+    return (now - createdTime) > PAYMENT_TIMEOUT;
+  });
+
+  if (expiredPayments.length > 0) {
+    console.log(`🧹 Cleaning up ${expiredPayments.length} expired pending payments`);
+    
+    // Remove expired payments
+    pendingPayments = pendingPayments.filter(p => {
+      const createdTime = p.createdAt || cycleStartTime || now;
+      return (now - createdTime) <= PAYMENT_TIMEOUT;
+    });
+    
+    // Notify users their payment expired
+    expiredPayments.forEach(async (payment) => {
+      try {
+        await bot.sendMessage(
+          payment.userId,
+          `⏱️ Payment Timeout\n\n` +
+          `Your payment session expired. You can upload a new track and try again!\n\n` +
+          `Type /start to begin a new submission.`
+        );
+      } catch (err) {
+        console.log(`⚠️ Could not notify user ${payment.userId} about expiration`);
+      }
+    });
+    
+    saveState();
+  }
+}
+
+// === RUN CLEANUP EVERY 2 MINUTES ===
+setInterval(() => {
+  cleanupExpiredPayments();
+}, 2 * 60 * 1000);
 
 // === CALCULATE VOTING TIME ===
 function calculateVotingTime() {
@@ -1020,9 +1063,14 @@ async function sendXPOSUREPayout(destination, amountXPOSURE, reason = "payout") 
 async function startNewCycle() {
   console.log("🔄 Starting new cycle...");
   
+  // CRITICAL: Ensure complete state reset
+  participants = [];
+  voters = [];
+  pendingPayments = [];
   phase = "submission";
   cycleStartTime = Date.now();
   nextPhaseTime = cycleStartTime + 5 * 60 * 1000;
+  // Note: treasuryXPOSURE and actualTreasuryBalance are NOT reset (they persist/grow)
   saveState();
 
   const botUsername = process.env.BOT_USERNAME || '@xposure_overlord_bot';
@@ -1119,11 +1167,15 @@ async function announceWinners() {
   
   if (!uploaders.length) {
     console.log("🚫 No uploads");
+    
+    // CRITICAL FIX: Clear ALL state properly even with no submissions
+    console.log("🧹 Clearing state (no submissions)...");
     participants = [];
     voters = [];
     treasuryXPOSURE = 0;
     pendingPayments = [];
     saveState();
+    
     setTimeout(() => startNewCycle(), 60 * 1000);
     return;
   }
@@ -1217,6 +1269,8 @@ async function announceWinners() {
     console.log(`🎰 Bonus prize paid: ${treasuryBonusAmount.toLocaleString()} XPOSURE from treasury`);
   }
   
+  // CRITICAL FIX: Clear ALL state properly after winners announced
+  console.log("🧹 Clearing all participants, voters, and pending payments...");
   participants = [];
   voters = [];
   treasuryXPOSURE = 0;
@@ -1233,6 +1287,61 @@ bot.onText(/\/start|play/i, async (msg) => {
 
   if (phase !== "submission") {
     await bot.sendMessage(userId, `⚠️ ${phase} phase active. Wait for next round!`);
+    return;
+  }
+
+  // Check if user already has a pending payment
+  const existingPending = pendingPayments.find(p => p.userId === userId);
+  if (existingPending) {
+    // Check if it's expired
+    const createdTime = existingPending.createdAt || cycleStartTime || Date.now();
+    const age = Date.now() - createdTime;
+    
+    if (age > PAYMENT_TIMEOUT) {
+      // Remove expired payment
+      console.log(`🧹 Removing expired payment for ${userId} in /start`);
+      pendingPayments = pendingPayments.filter(p => p.userId !== userId);
+      saveState();
+      
+      await bot.sendMessage(
+        userId,
+        `⏱️ Your previous session expired.\n\nLet's start fresh! Choose an option below:`
+      );
+    } else if (existingPending.track && !existingPending.confirmed) {
+      // They uploaded but haven't paid yet
+      const reference = existingPending.reference;
+      const redirectLink = `https://sunolabs-redirect.onrender.com/pay?bot=xposure&recipient=${TREASURY.toBase58()}&amount=0.01&reference=${reference}&userId=${userId}`;
+      const timeLeft = Math.ceil((PAYMENT_TIMEOUT - age) / 60000);
+      
+      await bot.sendMessage(
+        userId,
+        `🎤 Track uploaded: ${existingPending.title}\n\n⏱️ Payment pending (${timeLeft} minutes left)\n\n🪙 Complete payment to enter:`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🪙 Complete Payment", url: redirectLink }]
+            ]
+          }
+        }
+      );
+      return;
+    } else {
+      const timeLeft = Math.ceil((PAYMENT_TIMEOUT - age) / 60000);
+      await bot.sendMessage(
+        userId,
+        `⚠️ You already started a submission (${timeLeft} min left).\n\n${existingPending.track ? `🎤 ${existingPending.title}` : "📤 Waiting for your track..."}\n\nWait for payment to complete or for the session to expire.`
+      );
+      return;
+    }
+  }
+
+  // Check if already participated
+  const alreadyParticipated = participants.find(p => p.userId === userId);
+  if (alreadyParticipated) {
+    await bot.sendMessage(
+      userId,
+      `✅ You're already in!\n\n${alreadyParticipated.choice === "upload" ? `🎤 ${alreadyParticipated.title}` : "🗳️ Voter"}`
+    );
     return;
   }
 
@@ -1301,11 +1410,28 @@ bot.on("message", async (msg) => {
 
     // === PREVENT MULTIPLE UPLOADS ===
     if (uploadChoice.track) {
-      await bot.sendMessage(
-        userId,
-        `⚠️ You already uploaded a track!\n\n🎤 ${uploadChoice.title}\n\nWait for payment to complete or start a new round.`
-      );
-      return;
+      // Check if payment expired
+      const createdTime = uploadChoice.createdAt || cycleStartTime || Date.now();
+      const age = Date.now() - createdTime;
+      
+      if (age > PAYMENT_TIMEOUT) {
+        // Payment expired, allow new upload
+        console.log(`🧹 Payment expired for ${userId}, allowing new upload`);
+        pendingPayments = pendingPayments.filter(p => p.userId !== userId);
+        saveState();
+        
+        await bot.sendMessage(
+          userId,
+          `⏱️ Your previous upload expired.\n\nPlease type /start to submit a new track!`
+        );
+        return;
+      } else {
+        await bot.sendMessage(
+          userId,
+          `⚠️ You already uploaded a track!\n\n🎤 ${uploadChoice.title}\n\nWait for payment to complete or start a new round.`
+        );
+        return;
+      }
     }
 
     // Check if already participated this round
@@ -1318,20 +1444,25 @@ bot.on("message", async (msg) => {
       return;
     }
 
-    // Save the track with duration
+    // Save the track with duration and creation time
     uploadChoice.track = msg.audio.file_id;
     uploadChoice.title = msg.audio.file_name || msg.audio.title || "Untitled";
     uploadChoice.trackDuration = msg.audio.duration || 0;  // Duration in seconds
     uploadChoice.user = user;
+    if (!uploadChoice.createdAt) {
+      uploadChoice.createdAt = Date.now();  // Track when upload happened if not already set
+    }
     saveState();
 
     const reference = uploadChoice.reference;
     const redirectLink = `https://sunolabs-redirect.onrender.com/pay?bot=xposure&recipient=${TREASURY.toBase58()}&amount=0.01&reference=${reference}&userId=${userId}`;
 
     const durationText = uploadChoice.trackDuration > 0 ? ` (${uploadChoice.trackDuration}s)` : '';
+    const timeLeft = Math.ceil(PAYMENT_TIMEOUT / 60000);
+    
     await bot.sendMessage(
       userId,
-      `🎧 Track received!${durationText}\n\n🪙 Now buy XPOSURE tokens to enter the competition!`,
+      `🎧 Track received!${durationText}\n\n🪙 Complete payment within ${timeLeft} minutes to enter!\n\n⏱️ Session expires if payment not completed.`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -1382,6 +1513,13 @@ bot.on("callback_query", async (q) => {
         return;
       }
 
+      // Check for existing pending payment
+      const existingPending = pendingPayments.find(p => p.userId === userKey);
+      if (existingPending) {
+        await bot.answerCallbackQuery(q.id, { text: "⚠️ Already in progress!" });
+        return;
+      }
+
       const reference = Keypair.generate().publicKey;
       const redirectLink = `https://sunolabs-redirect.onrender.com/pay?bot=xposure&recipient=${TREASURY.toBase58()}&amount=0.01&reference=${reference.toBase58()}&userId=${userKey}`;
 
@@ -1392,14 +1530,15 @@ bot.on("callback_query", async (q) => {
           choice: "upload",
           reference: reference.toBase58(),
           confirmed: false,
-          paid: false
+          paid: false,
+          createdAt: Date.now()  // Track when payment session started
         });
         saveState();
 
         await bot.answerCallbackQuery(q.id, { text: "✅ Upload mode selected!" });
         await bot.sendMessage(
           userKey,
-          `🎤 Upload Track & Compete!\n\n📤 Send me your audio file now.`
+          `🎤 Upload Track & Compete!\n\n📤 Send me your audio file now.\n\n⏱️ You have ${Math.ceil(PAYMENT_TIMEOUT / 60000)} minutes to upload and pay.`
         );
 
       } else if (action === "vote") {
@@ -1409,14 +1548,15 @@ bot.on("callback_query", async (q) => {
           choice: "vote",
           reference: reference.toBase58(),
           confirmed: false,
-          paid: false
+          paid: false,
+          createdAt: Date.now()  // Track when payment session started
         });
         saveState();
 
         await bot.answerCallbackQuery(q.id, { text: "✅ Vote mode selected!" });
         await bot.sendMessage(
           userKey,
-          `🗳️ Vote Only & Earn!\n\n🪙 Buy XPOSURE tokens to participate!`,
+          `🗳️ Vote Only & Earn!\n\n🪙 Buy XPOSURE tokens to participate!\n\n⏱️ Complete payment within ${Math.ceil(PAYMENT_TIMEOUT / 60000)} minutes.`,
           {
             reply_markup: {
               inline_keyboard: [
@@ -1527,7 +1667,7 @@ app.listen(PORT, async () => {
 });
 
 setInterval(() => {
-  console.log(`⏰ Phase: ${phase} | Uploaders: ${participants.filter(p => p.choice === "upload").length} | Voters: ${voters.length}`);
+  console.log(`⏰ Phase: ${phase} | Uploaders: ${participants.filter(p => p.choice === "upload").length} | Voters: ${voters.length} | Pending: ${pendingPayments.length}`);
 }, 30000);
 
 // === SELF-PING TO PREVENT RENDER SLEEP ===
