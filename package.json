@@ -1,8 +1,8 @@
 {
-  "name": "sunolabs-bot",
+  "name": "xposure-bot",
   "version": "1.0.0",
   "type": "module",
-  "description": "SunoLabs Telegram Bot with Buy SUNO functionality",
+  "description": "Xposure Telegram Bot with Buy XPOSURE functionality",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -16,7 +16,7 @@
     "@pump-fun/pump-sdk": "^1.0.0",
     "bn.js": "^5.2.1",
     "bs58": "^6.0.0",
-     "express-rate-limit": "^7.1.5"
+    "express-rate-limit": "^7.1.5"
   },
   "engines": {
     "node": ">=18.0.0"
