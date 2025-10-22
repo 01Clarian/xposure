@@ -35,7 +35,7 @@ let isShuttingDown = false;
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
-  console.log(`🧹 Graceful shutdown (${signal})...`);
+  console.log(\`🧹 Graceful shutdown (\${signal})...\`);
   saveState();
   console.log("✅ Shutdown complete");
   process.exit(0);
@@ -117,10 +117,10 @@ async function getActualTreasuryBalance() {
     const balance = await connection.getTokenAccountBalance(treasuryTokenAccount);
     const xposureBalance = Math.floor(parseFloat(balance.value.uiAmount || 0));
     
-    console.log(`🏦 Treasury wallet balance: ${xposureBalance.toLocaleString()} XPOSURE`);
+    console.log(\`🏦 Treasury wallet balance: \${xposureBalance.toLocaleString()} XPOSURE\`);
     return xposureBalance;
   } catch (err) {
-    console.log(`⚠️ Could not fetch treasury balance: ${err.message}`);
+    console.log(\`⚠️ Could not fetch treasury balance: \${err.message}\`);
     return actualTreasuryBalance; // Return current tracked value as fallback
   }
 }
@@ -134,7 +134,7 @@ function cleanupExpiredPayments() {
   });
 
   if (expiredPayments.length > 0) {
-    console.log(`🧹 Cleaning up ${expiredPayments.length} expired pending payments`);
+    console.log(\`🧹 Cleaning up \${expiredPayments.length} expired pending payments\`);
     
     // Remove expired payments
     pendingPayments = pendingPayments.filter(p => {
@@ -147,12 +147,12 @@ function cleanupExpiredPayments() {
       try {
         await bot.sendMessage(
           payment.userId,
-          `⏱️ Payment Timeout\n\n` +
-          `Your payment session expired. You can upload a new track and try again!\n\n` +
-          `Type /start to begin a new submission.`
+          \`⏱️ Payment Timeout\\n\\n\` +
+          \`Your payment session expired. You can upload a new track and try again!\\n\\n\` +
+          \`Type /start to begin a new submission.\`
         );
       } catch (err) {
-        console.log(`⚠️ Could not notify user ${payment.userId} about expiration`);
+        console.log(\`⚠️ Could not notify user \${payment.userId} about expiration\`);
       }
     });
     
@@ -187,12 +187,12 @@ function calculateVotingTime() {
   if (hasAllDurations && totalDuration > 0) {
     // Use actual durations + 1 minute for decision time
     const votingTime = (totalDuration + 60) * 1000; // Convert to milliseconds
-    console.log(`⏱️ Voting time: ${Math.ceil(votingTime / 60000)} minutes (based on track durations)`);
+    console.log(\`⏱️ Voting time: \${Math.ceil(votingTime / 60000)} minutes (based on track durations)\`);
     return votingTime;
   } else {
     // Fallback: 2 minutes per track
     const fallbackTime = uploaders.length * 2 * 60 * 1000;
-    console.log(`⏱️ Voting time: ${Math.ceil(fallbackTime / 60000)} minutes (fallback: 2 min per track)`);
+    console.log(\`⏱️ Voting time: \${Math.ceil(fallbackTime / 60000)} minutes (fallback: 2 min per track)\`);
     return fallbackTime;
   }
 }
@@ -255,7 +255,7 @@ function getWhaleMultiplier(amount) {
 // === TRANSFER TOKENS TO RECIPIENT ===
 async function transferTokensToRecipient(tokenAmount, recipientWallet) {
   try {
-    console.log(`📤 Initiating token transfer...`);
+    console.log(\`📤 Initiating token transfer...\`);
     
     const recipientPubkey = new PublicKey(recipientWallet);
     
@@ -309,23 +309,23 @@ async function transferTokensToRecipient(tokenAmount, recipientWallet) {
     console.log("✍️ Signing transfer transaction...");
     const sig = await connection.sendTransaction(tx, [TREASURY_KEYPAIR]);
     
-    console.log(`📤 Transfer sent: ${sig.substring(0, 8)}...`);
-    console.log(`🔗 https://solscan.io/tx/${sig}`);
+    console.log(\`📤 Transfer sent: \${sig.substring(0, 8)}...\`);
+    console.log(\`🔗 https://solscan.io/tx/\${sig}\`);
     
     await connection.confirmTransaction(sig, "confirmed");
     
-    console.log(`✅ Transfer confirmed!`);
+    console.log(\`✅ Transfer confirmed!\`);
     
     return true;
     
   } catch (err) {
-    console.error(`❌ Token transfer failed: ${err.message}`);
+    console.error(\`❌ Token transfer failed: \${err.message}\`);
     console.error(err.stack);
     return false;
   }
 }
 
-// === CHECK IF TOKEN HAS GRADUATED ===
+// === ✅ UPDATED: CHECK IF TOKEN HAS GRADUATED ===
 async function checkIfGraduated() {
   try {
     console.log("🔍 Checking token graduation status...");
@@ -358,7 +358,7 @@ async function checkIfGraduated() {
     return { graduated: false, platform: 'pump' };
     
   } catch (err) {
-    console.error(`⚠️ Graduation check error: ${err.message}. Assuming graduated...`);
+    console.error(\`⚠️ Graduation check error: \${err.message}. Assuming graduated...\`);
     return { graduated: true, platform: 'unknown' };
   }
 }
@@ -366,8 +366,8 @@ async function checkIfGraduated() {
 // === ✅ NEW: PUMPSWAP BUY (for graduated tokens) ===
 async function buyOnPumpSwap(solAmount) {
   try {
-    console.log(`🎓 Starting PumpSwap buy: ${solAmount.toFixed(4)} SOL → XPOSURE`);
-    console.log(`📍 Token graduated to PumpSwap - using pumpapi.fun...`);
+    console.log(\`🎓 Starting PumpSwap buy: \${solAmount.toFixed(4)} SOL → XPOSURE\`);
+    console.log(\`📍 Token graduated to PumpSwap - using pumpapi.fun...\`);
     
     // Create HTTPS agent that bypasses self-signed certificate
     const httpsAgent = new https.Agent({  
@@ -382,7 +382,7 @@ async function buyOnPumpSwap(solAmount) {
     
     const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
     const balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
-    console.log(`💰 Treasury balance before: ${balanceBefore.toLocaleString()} XPOSURE`);
+    console.log(\`💰 Treasury balance before: \${balanceBefore.toLocaleString()} XPOSURE\`);
     
     // Step 1: Get quote from PumpSwap
     console.log("📊 Getting PumpSwap quote...");
@@ -405,16 +405,16 @@ async function buyOnPumpSwap(solAmount) {
 
     if (!quoteResponse.ok) {
       const errorText = await quoteResponse.text();
-      throw new Error(`PumpSwap quote failed: ${quoteResponse.status} - ${errorText}`);
+      throw new Error(\`PumpSwap quote failed: \${quoteResponse.status} - \${errorText}\`);
     }
 
     const quoteData = await quoteResponse.json();
     
     if (!quoteData.success || !quoteData.transaction) {
-      throw new Error(`PumpSwap quote failed: ${quoteData.error || 'No transaction returned'}`);
+      throw new Error(\`PumpSwap quote failed: \${quoteData.error || 'No transaction returned'}\`);
     }
 
-    console.log(`✅ PumpSwap quote received`);
+    console.log(\`✅ PumpSwap quote received\`);
     
     // Step 2: Deserialize, sign & send transaction
     console.log("🔓 Deserializing transaction...");
@@ -429,13 +429,13 @@ async function buyOnPumpSwap(solAmount) {
       maxRetries: 3
     });
     
-    console.log(`📤 Transaction sent: ${sig.substring(0, 8)}...`);
-    console.log(`🔗 https://solscan.io/tx/${sig}`);
+    console.log(\`📤 Transaction sent: \${sig.substring(0, 8)}...\`);
+    console.log(\`🔗 https://solscan.io/tx/\${sig}\`);
     console.log("⏳ Confirming transaction...");
     
     await connection.confirmTransaction(sig, 'confirmed');
     
-    console.log(`✅ PumpSwap buy complete!`);
+    console.log(\`✅ PumpSwap buy complete!\`);
     
     // Get balance AFTER purchase
     await new Promise(r => setTimeout(r, 3000)); // Wait for balance update
@@ -443,12 +443,12 @@ async function buyOnPumpSwap(solAmount) {
     const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
     
     const xposureReceived = balanceAfter - balanceBefore;
-    console.log(`🪙 Treasury received ${xposureReceived.toLocaleString()} XPOSURE`);
+    console.log(\`🪙 Treasury received \${xposureReceived.toLocaleString()} XPOSURE\`);
     
     return xposureReceived;
     
   } catch (err) {
-    console.error(`❌ PumpSwap buy failed: ${err.message}`);
+    console.error(\`❌ PumpSwap buy failed: \${err.message}\`);
     console.error(err.stack);
     throw err;
   }
@@ -457,8 +457,8 @@ async function buyOnPumpSwap(solAmount) {
 // === PUMP.FUN BUY (Using PumpPortal API - for bonding curve tokens) ===
 async function buyOnPumpFun(solAmount) {
   try {
-    console.log(`🚀 Starting pump.fun buy with PumpPortal API: ${solAmount.toFixed(4)} SOL`);
-    console.log(`📍 Buying to treasury, will split XPOSURE after...`);
+    console.log(\`🚀 Starting pump.fun buy with PumpPortal API: \${solAmount.toFixed(4)} SOL\`);
+    console.log(\`📍 Buying to treasury, will split XPOSURE after...\`);
     
     // Get treasury balance BEFORE purchase
     const treasuryTokenAccount = await getAssociatedTokenAddress(
@@ -466,13 +466,19 @@ async function buyOnPumpFun(solAmount) {
       TREASURY_KEYPAIR.publicKey
     );
     
-    const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
-    const balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
-    console.log(`💰 Treasury balance before: ${balanceBefore.toLocaleString()} XPOSURE`);
+    let balanceBefore = 0;
+    try {
+      const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
+      balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
+      console.log(\`💰 Treasury balance before: \${balanceBefore.toLocaleString()} XPOSURE\`);
+    } catch (e) {
+      console.log(\`💰 Treasury balance before: 0 XPOSURE (account doesn't exist yet)\`);
+      balanceBefore = 0;
+    }
     
     // Get transaction from PumpPortal
     console.log("📊 Getting PumpPortal transaction...");
-    const quoteResponse = await fetch(`https://pumpportal.fun/api/trade-local`, {
+    const quoteResponse = await fetch(\`https://pumpportal.fun/api/trade-local\`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json"
@@ -491,12 +497,12 @@ async function buyOnPumpFun(solAmount) {
     
     if (!quoteResponse.ok) {
       const errorText = await quoteResponse.text();
-      throw new Error(`PumpPortal request failed: ${quoteResponse.status} - ${errorText}`);
+      throw new Error(\`PumpPortal request failed: \${quoteResponse.status} - \${errorText}\`);
     }
     
     // PumpPortal returns raw binary transaction data (not base64!)
     const txData = await quoteResponse.arrayBuffer();
-    console.log(`✅ Got transaction data (${txData.byteLength} bytes)`);
+    console.log(\`✅ Got transaction data (\${txData.byteLength} bytes)\`);
     
     // Deserialize and sign transaction
     console.log("🔓 Deserializing transaction...");
@@ -511,13 +517,13 @@ async function buyOnPumpFun(solAmount) {
       maxRetries: 3
     });
     
-    console.log(`📤 Transaction sent: ${sig.substring(0, 8)}...`);
-    console.log(`🔗 https://solscan.io/tx/${sig}`);
+    console.log(\`📤 Transaction sent: \${sig.substring(0, 8)}...\`);
+    console.log(\`🔗 https://solscan.io/tx/\${sig}\`);
     console.log("⏳ Confirming transaction...");
     
     await connection.confirmTransaction(sig, "confirmed");
     
-    console.log(`✅ Pump.fun buy complete!`);
+    console.log(\`✅ Pump.fun buy complete!\`);
     
     // Get balance AFTER purchase
     await new Promise(r => setTimeout(r, 3000));
@@ -526,12 +532,12 @@ async function buyOnPumpFun(solAmount) {
     const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
     
     const xposureReceived = balanceAfter - balanceBefore;
-    console.log(`🪙 Treasury received ${xposureReceived.toLocaleString()} XPOSURE`);
+    console.log(\`🪙 Treasury received \${xposureReceived.toLocaleString()} XPOSURE\`);
     
     return xposureReceived;
     
   } catch (err) {
-    console.error(`❌ Pump.fun buy failed: ${err.message}`);
+    console.error(\`❌ Pump.fun buy failed: \${err.message}\`);
     console.error(err.stack);
     throw err;
   }
@@ -540,8 +546,8 @@ async function buyOnPumpFun(solAmount) {
 // === JUPITER SWAP (fallback for graduated tokens if PumpSwap fails) ===
 async function buyOnJupiter(solAmount) {
   try {
-    console.log(`🪐 Starting Jupiter swap: ${solAmount.toFixed(4)} SOL → XPOSURE`);
-    console.log(`📍 Buying to treasury, will split XPOSURE after...`);
+    console.log(\`🪐 Starting Jupiter swap: \${solAmount.toFixed(4)} SOL → XPOSURE\`);
+    console.log(\`📍 Buying to treasury, will split XPOSURE after...\`);
     
     const lamports = Math.floor(solAmount * 1e9);
     
@@ -551,28 +557,28 @@ async function buyOnJupiter(solAmount) {
       TREASURY_KEYPAIR.publicKey
     );
     
-    console.log(`📍 Treasury token account: ${treasuryTokenAccount.toBase58().substring(0, 8)}...`);
+    console.log(\`📍 Treasury token account: \${treasuryTokenAccount.toBase58().substring(0, 8)}...\`);
     
     // Get quote from Jupiter
     console.log("📊 Getting Jupiter quote...");
     const quoteResponse = await fetch(
-      `https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${TOKEN_MINT.toBase58()}&amount=${lamports}&slippageBps=500`
+      \`https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=\${TOKEN_MINT.toBase58()}&amount=\${lamports}&slippageBps=500\`
     );
     
     if (!quoteResponse.ok) {
-      throw new Error(`Jupiter quote request failed: ${quoteResponse.status} ${quoteResponse.statusText}`);
+      throw new Error(\`Jupiter quote request failed: \${quoteResponse.status} \${quoteResponse.statusText}\`);
     }
     
     const quoteData = await quoteResponse.json();
     
     if (!quoteData || quoteData.error) {
-      throw new Error(`Quote failed: ${quoteData?.error || 'Unknown error'}`);
+      throw new Error(\`Quote failed: \${quoteData?.error || 'Unknown error'}\`);
     }
     
     // Jupiter returns raw amount - convert to XPOSURE
     const rawOutAmount = parseInt(quoteData.outAmount);
     const outAmount = Math.floor(rawOutAmount / 1_000_000); // Convert to XPOSURE (6 decimals)
-    console.log(`💎 Quote received: ${outAmount.toLocaleString()} XPOSURE`);
+    console.log(\`💎 Quote received: \${outAmount.toLocaleString()} XPOSURE\`);
     
     // Get swap transaction (to treasury's token account)
     console.log("🔨 Building swap transaction...");
@@ -595,7 +601,7 @@ async function buyOnJupiter(solAmount) {
     });
     
     if (!swapResponse.ok) {
-      throw new Error(`Jupiter swap request failed: ${swapResponse.status} ${swapResponse.statusText}`);
+      throw new Error(\`Jupiter swap request failed: \${swapResponse.status} \${swapResponse.statusText}\`);
     }
     
     const swapData = await swapResponse.json();
@@ -618,19 +624,19 @@ async function buyOnJupiter(solAmount) {
       maxRetries: 3
     });
     
-    console.log(`📤 Transaction sent: ${sig.substring(0, 8)}...`);
-    console.log(`🔗 https://solscan.io/tx/${sig}`);
+    console.log(\`📤 Transaction sent: \${sig.substring(0, 8)}...\`);
+    console.log(\`🔗 https://solscan.io/tx/\${sig}\`);
     console.log("⏳ Confirming transaction...");
     
     await connection.confirmTransaction(sig, 'confirmed');
     
-    console.log(`✅ Jupiter swap complete!`);
-    console.log(`🪙 Treasury received ${outAmount.toLocaleString()} XPOSURE tokens (will split next)`);
+    console.log(\`✅ Jupiter swap complete!\`);
+    console.log(\`🪙 Treasury received \${outAmount.toLocaleString()} XPOSURE tokens (will split next)\`);
     
     return outAmount;
     
   } catch (err) {
-    console.error(`❌ Jupiter swap failed: ${err.message}`);
+    console.error(\`❌ Jupiter swap failed: \${err.message}\`);
     console.error(err.stack);
     throw err;
   }
@@ -639,9 +645,9 @@ async function buyOnJupiter(solAmount) {
 // === ✅ UPDATED: MARKET INTEGRATION (Auto-detect platform) ===
 async function buyXPOSUREOnMarket(solAmount) {
   try {
-    console.log(`\n🔄 ========== BUYING XPOSURE ==========`);
-    console.log(`💰 Amount: ${solAmount.toFixed(4)} SOL`);
-    console.log(`📍 Buying to treasury (will split after)`);
+    console.log(\`\\n🔄 ========== BUYING XPOSURE ==========\`);
+    console.log(\`💰 Amount: \${solAmount.toFixed(4)} SOL\`);
+    console.log(\`📍 Buying to treasury (will split after)\`);
     
     const status = await checkIfGraduated();
     
@@ -658,28 +664,27 @@ async function buyXPOSUREOnMarket(solAmount) {
       try {
         xposureAmount = await buyOnPumpSwap(solAmount);
       } catch (pumpSwapError) {
-        console.error(`⚠️ PumpSwap failed: ${pumpSwapError.message}`);
+        console.error(\`⚠️ PumpSwap failed: \${pumpSwapError.message}\`);
         console.log("🔄 Falling back to Jupiter...");
         try {
           xposureAmount = await buyOnJupiter(solAmount);
         } catch (jupiterError) {
-          console.error(`❌ Jupiter also failed: ${jupiterError.message}`);
-          throw new Error(`All swap methods failed. PumpSwap: ${pumpSwapError.message}, Jupiter: ${jupiterError.message}`);
+          console.error(\`❌ Jupiter also failed: \${jupiterError.message}\`);
+          throw new Error(\`All swap methods failed. PumpSwap: \${pumpSwapError.message}, Jupiter: \${jupiterError.message}\`);
         }
       }
     }
     
-    console.log(`✅ Purchase complete! ${xposureAmount.toLocaleString()} XPOSURE now in treasury`);
-    console.log(`🔄 ===================================\n`);
+    console.log(\`✅ Purchase complete! \${xposureAmount.toLocaleString()} XPOSURE now in treasury\`);
+    console.log(\`🔄 ===================================\\n\`);
     return xposureAmount;
     
   } catch (err) {
-    console.error(`❌ Market buy failed: ${err.message}`);
+    console.error(\`❌ Market buy failed: \${err.message}\`);
     console.error(err.stack);
     throw err;
   }
 }
-
 // === STATE PERSISTENCE ===
 const SAVE_FILE = fs.existsSync("/data")
   ? "/data/submissions.json"
@@ -699,533 +704,763 @@ function saveState() {
         actualTreasuryBalance,
         transFeeCollected,
         pendingPayments
-      })
+      }, null, 2)
     );
   } catch (err) {
-    console.error("⚠️ Save failed:", err.message);
+    console.error("⚠️ Failed to save state:", err.message);
   }
 }
 
 function loadState() {
+  if (!fs.existsSync(SAVE_FILE)) return;
   try {
-    if (fs.existsSync(SAVE_FILE)) {
-      const data = JSON.parse(fs.readFileSync(SAVE_FILE, "utf8"));
-      participants = data.participants || [];
-      voters = data.voters || [];
-      phase = data.phase || "submission";
-      cycleStartTime = data.cycleStartTime || null;
-      nextPhaseTime = data.nextPhaseTime || null;
-      treasuryXPOSURE = data.treasuryXPOSURE || 0;
-      actualTreasuryBalance = data.actualTreasuryBalance || 0;
-      transFeeCollected = data.transFeeCollected || 0;
-      pendingPayments = data.pendingPayments || [];
-      console.log("✅ State loaded");
-    }
-  } catch (err) {
-    console.error("⚠️ Load failed:", err.message);
+    const d = JSON.parse(fs.readFileSync(SAVE_FILE));
+    participants = d.participants || [];
+    voters = d.voters || [];
+    phase = d.phase || "submission";
+    cycleStartTime = d.cycleStartTime || null;
+    nextPhaseTime = d.nextPhaseTime || null;
+    treasuryXPOSURE = d.treasuryXPOSURE || 0;
+    actualTreasuryBalance = d.actualTreasuryBalance || 0;
+    transFeeCollected = d.transFeeCollected || 0;
+    pendingPayments = d.pendingPayments || [];
+    console.log(`📂 State restored — ${participants.length} participants, phase: ${phase}, Treasury: ${actualTreasuryBalance.toLocaleString()} XPOSURE`);
+  } catch (e) {
+    console.error("⚠️ Failed to load:", e.message);
   }
 }
 
 // === EXPRESS SERVER ===
 const app = express();
-const PORT = process.env.PORT || 3000;
-
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10kb' })); // Limit request size
+const PORT = process.env.PORT || 10000;
 
-const limiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 30,
+// === RATE LIMITING ===
+const paymentLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // 10 payment confirmations per minute per IP
+  message: { error: '⚠️ Too many payment attempts, please wait' },
   standardHeaders: true,
-  legacyHeaders: false
-});
-app.use(limiter);
-
-app.get("/", (req, res) => {
-  res.json({ status: "ok", phase, participants: participants.length, voters: voters.length });
+  legacyHeaders: false,
 });
 
-// === WEBHOOK ENDPOINT ===
-app.post(`/webhook/${token}`, (req, res) => {
+const generalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute per IP
+  message: { error: '⚠️ Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.get("/", generalLimiter, async (_, res) => {
+  const uploaders = participants.filter(p => p.choice === "upload" && p.paid).length;
+  const voteOnly = voters.length;
+  const bonusPercentage = getTreasuryBonusPercentage();
+  
+  res.json({
+    status: "✅ Xposure Buy XPOSURE System Live",
+    mode: "webhook",
+    phase,
+    uploaders,
+    voteOnly,
+    roundPrizePool: treasuryXPOSURE.toLocaleString() + " XPOSURE",
+    actualTreasury: actualTreasuryBalance.toLocaleString() + " XPOSURE",
+    bonusPrize: `${calculateTreasuryBonus().toLocaleString()} XPOSURE (${(bonusPercentage * 100).toFixed(0)}%)`,
+    bonusChance: `1 in ${TREASURY_BONUS_CHANCE}`,
+    transFees: transFeeCollected.toFixed(4) + " SOL",
+    uptime: process.uptime()
+  });
+});
+
+app.post(`/webhook/${token}`, generalLimiter, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
-// === PAYMENT CONFIRMATION ENDPOINT ===
-app.post("/payment-confirmed", async (req, res) => {
+// === PAYMENT CONFIRMATION ===
+app.post("/confirm-payment", paymentLimiter, async (req, res) => {
+  console.log("\n==============================================");
+  console.log("🔔 /confirm-payment ENDPOINT HIT!");
+  console.log("📦 Request body:", JSON.stringify(req.body, null, 2));
+  console.log("==============================================\n");
+  
   try {
-    const { reference, userId, amount } = req.body;
+    const { signature, reference, userId, amount, senderWallet } = req.body;
     
-    if (!reference || !userId || !amount) {
-      console.log("⚠️ Invalid payment data:", req.body);
-      return res.status(400).json({ error: "Missing data" });
+    // === VALIDATION ===
+    console.log("🔍 Validating parameters...");
+    if (!userId || !reference || !senderWallet) {
+      console.log("❌ MISSING PARAMETERS!");
+      console.warn("⚠️ Missing params:", req.body);
+      return res.status(400).json({ error: "Missing required fields" });
     }
     
-    console.log(`\n💰 ========== PAYMENT RECEIVED ==========`);
-    console.log(`👤 User: ${userId}`);
-    console.log(`💵 Amount: ${amount} SOL`);
-    console.log(`🔑 Reference: ${reference}`);
-    
-    const pending = pendingPayments.find(p => p.reference === reference && p.userId === userId);
-    
-    if (!pending) {
-      console.log(`⚠️ No pending payment found`);
-      return res.status(404).json({ error: "Not found" });
+    // Validate amount is reasonable
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum < 0.001 || amountNum > 100) {
+      console.log("❌ INVALID AMOUNT:", amount);
+      return res.status(400).json({ error: "Invalid amount (must be 0.001-100 SOL)" });
     }
     
-    if (pending.confirmed) {
-      console.log(`⚠️ Already confirmed`);
-      return res.status(200).json({ message: "Already processed" });
-    }
-    
-    if (phase !== "submission") {
-      console.log(`⚠️ Submission phase ended`);
-      return res.status(400).json({ error: "Phase ended" });
-    }
-    
-    pending.paid = true;
-    pending.amount = parseFloat(amount);
-    
-    if (pending.choice === "upload" && !pending.track) {
-      console.log(`⏳ Waiting for track upload...`);
-      await bot.sendMessage(userId, `💰 Payment received! Now upload your audio file.`);
-      saveState();
-      return res.status(200).json({ message: "Awaiting track" });
-    }
-    
-    // Process the payment with tiered system
-    console.log(`\n🔄 Processing ${amount} SOL payment...`);
-    
-    const tier = getTier(parseFloat(amount));
-    const retention = tier === TIERS.WHALE ? getWhaleRetention(parseFloat(amount)) : tier.retention;
-    const multiplier = tier === TIERS.WHALE ? getWhaleMultiplier(parseFloat(amount)) : tier.multiplier;
-    
-    console.log(`${tier.badge} Tier: ${tier.name}`);
-    console.log(`📊 Retention: ${(retention * 100).toFixed(1)}%`);
-    console.log(`🔢 Multiplier: ${multiplier.toFixed(2)}x`);
-    
-    // Split: retention to user, rest to treasury
-    const userBuyAmount = parseFloat(amount) * retention;
-    const treasuryBuyAmount = parseFloat(amount) * (1 - retention);
-    
-    console.log(`💰 User buy: ${userBuyAmount.toFixed(4)} SOL`);
-    console.log(`🏦 Treasury buy: ${treasuryBuyAmount.toFixed(4)} SOL`);
-    
-    // Buy XPOSURE on market
-    let totalXPOSUREBought;
+    // Validate wallet address
     try {
-      totalXPOSUREBought = await buyXPOSUREOnMarket(parseFloat(amount));
-    } catch (err) {
-      console.error(`❌ Market buy failed: ${err.message}`);
-      await bot.sendMessage(
-        userId,
-        `⚠️ Payment received but token purchase failed. Admin notified. Please contact support.\n\n` +
-        `Reference: ${reference}`
-      );
-      return res.status(500).json({ error: "Market buy failed" });
+      new PublicKey(senderWallet);
+    } catch (e) {
+      console.log("❌ INVALID WALLET:", senderWallet);
+      return res.status(400).json({ error: "Invalid wallet address" });
     }
     
-    // Calculate splits
-    const userXPOSURE = Math.floor(totalXPOSUREBought * retention);
-    const treasuryXPOSURE_addition = totalXPOSUREBought - userXPOSURE;
+    console.log("✅ Parameters validated!");
+
+    const userKey = String(userId);
     
-    console.log(`\n💎 Distribution:`);
-    console.log(`👤 User receives: ${userXPOSURE.toLocaleString()} XPOSURE`);
-    console.log(`🏦 Treasury gets: ${treasuryXPOSURE_addition.toLocaleString()} XPOSURE`);
+    console.log(`\n💳 ========== PAYMENT RECEIVED ==========`);
+    console.log(`💰 Amount: ${amountNum} SOL`);
+    console.log(`👤 User: ${userKey}`);
+    console.log(`👛 Wallet: ${senderWallet.substring(0, 8)}...`);
+    console.log(`📝 Reference: ${reference.substring(0, 8)}...`);
+    console.log(`=====================================\n`);
+
+    // Check for duplicates
+    let existing = pendingPayments.find((p) => p.reference === reference);
+    if (existing && existing.confirmed) {
+      console.log("⚠️ Payment already processed - returning success");
+      return res.json({ ok: true, message: "Already processed" });
+    }
+
+    if (existing) {
+      existing.confirmed = true;
+    } else {
+      pendingPayments.push({
+        userId: userKey,
+        reference,
+        confirmed: true,
+      });
+    }
+
+    // === PAYMENT SPLIT ===
+    console.log("💰 Calculating payment split...");
+    const transFee = amountNum * 0.10;
+    const remainingSOL = amountNum * 0.90;
     
-    // Transfer user's portion
-    console.log(`\n📤 Transferring ${userXPOSURE.toLocaleString()} XPOSURE to user...`);
-    const recipient = pending.user || userId;
-    const transferSuccess = await transferTokensToRecipient(userXPOSURE, recipient);
+    const tier = getTier(amountNum);
+    let retention = tier.retention;
+    let multiplier = tier.multiplier;
+    
+    if (tier === TIERS.WHALE) {
+      retention = getWhaleRetention(amountNum);
+      multiplier = getWhaleMultiplier(amountNum);
+    }
+    
+    console.log(`\n💰 ========== PAYMENT SPLIT ==========`);
+    console.log(`🏦 Trans Fee (10%): ${transFee.toFixed(4)} SOL → Fee wallet`);
+    console.log(`💎 Buy XPOSURE with: ${remainingSOL.toFixed(4)} SOL`);
+    console.log(`📊 Then split XPOSURE tokens:`);
+    console.log(`   👤 User gets: ${(retention * 100).toFixed(0)}% of XPOSURE`);
+    console.log(`   🏆 Competition pool: ${((1 - retention) * 100).toFixed(0)}% of XPOSURE`);
+    console.log(`${tier.badge} Tier: ${tier.name} | ${multiplier}x multiplier`);
+    console.log(`=====================================\n`);
+
+    // === SEND TRANS FEE ===
+    console.log("💸 Sending trans fee...");
+    try {
+      await sendSOLPayout(TRANS_FEE_WALLET.toBase58(), transFee, "Trans fee");
+      transFeeCollected += transFee;
+      console.log("✅ Trans fee sent successfully");
+    } catch (err) {
+      console.error(`❌ Trans fee failed: ${err.message}`);
+    }
+
+    // === BUY XPOSURE WITH ALL REMAINING SOL ===
+    let totalXPOSURE = 0;
+    console.log("\n🪙 Starting XPOSURE purchase with ALL remaining SOL...");
+    
+    // Get treasury balance BEFORE purchase
+    let balanceBefore = 0;
+    try {
+      const treasuryTokenAccount = await getAssociatedTokenAddress(
+        TOKEN_MINT,
+        TREASURY_KEYPAIR.publicKey
+      );
+      const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
+      balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
+      console.log(`📊 Treasury balance BEFORE: ${balanceBefore.toLocaleString()} XPOSURE`);
+    } catch (e) {
+      console.log(`📊 Treasury balance BEFORE: 0 XPOSURE (account doesn't exist yet)`);
+      balanceBefore = 0;
+    }
+    
+    try {
+      await buyXPOSUREOnMarket(remainingSOL); // Execute purchase
+      
+      // Get treasury balance AFTER purchase
+      const treasuryTokenAccount = await getAssociatedTokenAddress(
+        TOKEN_MINT,
+        TREASURY_KEYPAIR.publicKey
+      );
+      await new Promise(r => setTimeout(r, 2000)); // Wait for balance update
+      const afterBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
+      const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
+      console.log(`📊 Treasury balance AFTER: ${balanceAfter.toLocaleString()} XPOSURE`);
+      
+      // Calculate actual tokens received
+      totalXPOSURE = balanceAfter - balanceBefore;
+      console.log(`\n✅ XPOSURE purchase SUCCESS: ${totalXPOSURE.toLocaleString()} XPOSURE tokens received`);
+    } catch (err) {
+      console.error(`\n❌ XPOSURE purchase FAILED: ${err.message}`);
+      console.error(err.stack);
+    }
+
+    // === CHECK IF PURCHASE WAS SUCCESSFUL ===
+    if (totalXPOSURE === 0 || !totalXPOSURE) {
+      console.log("⚠️ XPOSURE purchase returned 0 tokens - notifying user of failure");
+      
+      try {
+        await bot.sendMessage(
+          userId,
+          `❌ Purchase Failed!\n\n⚠️ We received your ${amountNum} SOL payment, but the XPOSURE token purchase failed.\n\n🔄 Please contact support or try again.\n\nError: Token purchase returned 0 tokens.`
+        );
+      } catch (e) {
+        console.error("⚠️ Failed to send error message:", e.message);
+      }
+      
+      console.log("✅ Error notification sent - returning error to client\n");
+      return res.json({ ok: false, error: "XPOSURE purchase failed", xposureAmount: 0 });
+    }
+
+    // === SPLIT XPOSURE TOKENS ===
+    const userXPOSURE = Math.floor(totalXPOSURE * retention);
+    const competitionXPOSURE = totalXPOSURE - userXPOSURE;
+    
+    console.log(`\n💎 ========== XPOSURE TOKEN SPLIT ==========`);
+    console.log(`🪙 Total XPOSURE bought: ${totalXPOSURE.toLocaleString()}`);
+    console.log(`👤 User gets: ${userXPOSURE.toLocaleString()} XPOSURE (${(retention * 100).toFixed(0)}%)`);
+    console.log(`🏆 Competition pool: ${competitionXPOSURE.toLocaleString()} XPOSURE (${((1 - retention) * 100).toFixed(0)}%)`);
+    console.log(`========================================\n`);
+
+    // === TRANSFER USER'S PORTION ===
+    console.log(`📤 Transferring ${userXPOSURE.toLocaleString()} XPOSURE to user...`);
+    const transferSuccess = await transferTokensToRecipient(userXPOSURE, senderWallet);
     
     if (!transferSuccess) {
-      console.error(`❌ Transfer to user failed`);
-      await bot.sendMessage(
-        userId,
-        `⚠️ Token transfer failed. Admin notified. Tokens are safe in treasury.\n\n` +
-        `Your allocation: ${userXPOSURE.toLocaleString()} XPOSURE\n` +
-        `Reference: ${reference}`
-      );
-      return res.status(500).json({ error: "Transfer failed" });
+      console.error("❌ Transfer failed!");
+      try {
+        await bot.sendMessage(
+          userId,
+          `❌ Transfer Failed!\n\n⚠️ XPOSURE purchase succeeded but transfer to your wallet failed.\n\nPlease contact support.`
+        );
+      } catch (e) {}
+      return res.json({ ok: false, error: "Transfer failed", xposureAmount: 0 });
     }
+
+    console.log(`✅ ${userXPOSURE.toLocaleString()} XPOSURE → ${senderWallet.substring(0, 8)}...`);
+
+    // === SPLIT COMPETITION POOL ===
+    // 65% goes to round prize pool (gets distributed)
+    // 35% goes to permanent treasury (saved, only used for bonus)
+    const roundPool = Math.floor(competitionXPOSURE * 0.65);
+    const permanentTreasury = competitionXPOSURE - roundPool;
     
-    console.log(`✅ User transfer complete!`);
+    treasuryXPOSURE += roundPool;
+    actualTreasuryBalance += permanentTreasury;
     
-    // Update treasury balances
-    treasuryXPOSURE += treasuryXPOSURE_addition; // Current round pool
-    actualTreasuryBalance += treasuryXPOSURE_addition; // Perpetual treasury
-    
-    console.log(`\n💰 Treasury Updated:`);
-    console.log(`📊 Current round pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE`);
-    console.log(`🏦 Total treasury: ${actualTreasuryBalance.toLocaleString()} XPOSURE`);
-    
-    // Check for treasury bonus
-    const wonBonus = checkTreasuryBonus();
-    let bonusAmount = 0;
-    
-    if (wonBonus) {
-      bonusAmount = calculateTreasuryBonus();
-      console.log(`\n🎰 TREASURY BONUS HIT! ${bonusAmount.toLocaleString()} XPOSURE (${(getTreasuryBonusPercentage() * 100).toFixed(0)}%)`);
-    }
-    
-    // Apply multiplier to entry
-    const adjustedAmount = parseFloat(amount) * multiplier;
-    
-    // Confirm participation
-    pending.confirmed = true;
-    
-    if (pending.choice === "upload") {
-      // Add uploader
-      participants.push({
-        userId: userId,
-        user: pending.user || userId,
-        track: pending.track,
-        title: pending.title,
-        trackDuration: pending.trackDuration || 0,
-        votes: 0,
-        voters: [],
-        choice: "upload",
-        tierBadge: tier.badge,
-        amount: adjustedAmount,
-        bonusWon: bonusAmount,
-        createdAt: pending.createdAt || Date.now()
-      });
-      
-      console.log(`✅ Uploader added: ${pending.user || userId}`);
-      
-      await bot.sendMessage(
-        userId,
-        `✅ Payment Confirmed!\n\n` +
-        `${tier.badge} ${tier.name} Entry\n` +
-        `💎 Received: ${userXPOSURE.toLocaleString()} XPOSURE\n` +
-        `🏦 Prize pool: +${treasuryXPOSURE_addition.toLocaleString()} XPOSURE\n` +
-        `🔢 Entry weight: ${adjustedAmount.toFixed(4)} SOL (${multiplier.toFixed(2)}x)\n` +
-        (wonBonus ? `\n🎰 BONUS! You won ${bonusAmount.toLocaleString()} extra XPOSURE from the treasury!\n` : '') +
-        `\n🎤 Your track is entered! Good luck!\n` +
-        `📺 Follow voting at @${CHANNEL}`
-      );
-      
-    } else if (pending.choice === "vote") {
-      // Add voter
+    console.log(`\n🏦 Pool Distribution:`);
+    console.log(`   Round Pool: +${roundPool.toLocaleString()} XPOSURE (65%) → Total: ${treasuryXPOSURE.toLocaleString()} XPOSURE`);
+    console.log(`   Permanent Treasury: +${permanentTreasury.toLocaleString()} XPOSURE (35%) → Total: ${actualTreasuryBalance.toLocaleString()} XPOSURE`);
+    console.log(`   Bonus Prize Available: ${calculateTreasuryBonus().toLocaleString()} XPOSURE (${(getTreasuryBonusPercentage() * 100).toFixed(0)}%)`);
+
+    // === SAVE USER DATA ===
+    const userData = {
+      userId: userKey,
+      wallet: senderWallet,
+      amount: amountNum,
+      xposureReceived: userXPOSURE,
+      tier: tier.name,
+      tierBadge: tier.badge,
+      retention: (retention * 100).toFixed(0) + "%",
+      multiplier,
+      paid: true,
+      timestamp: Date.now()
+    };
+
+    // === REGISTER USER BASED ON PRE-SELECTED CHOICE ===
+    const payment = pendingPayments.find(p => p.reference === reference);
+    const userChoice = payment?.choice || "vote"; // Default to vote if somehow missing
+
+    if (userChoice === "upload") {
+      // Register as competitor
+      if (!payment.track) {
+        console.log("⚠️ User chose upload but didn't send audio - defaulting to vote");
+        voters.push({
+          ...userData,
+          choice: "vote",
+          votedFor: null
+        });
+        
+        try {
+          await bot.sendMessage(
+            userId,
+            `✅ Payment complete!\n\n🪙 ${userXPOSURE.toLocaleString()} XPOSURE sent!\n${tier.badge} ${tier.name} tier (${(retention * 100).toFixed(0)}% retention)\n💰 ${multiplier}x prize multiplier\n\n⚠️ No audio found - registered as voter.\n🗳️ Vote during voting phase to earn rewards!`
+          );
+        } catch (e) {
+          console.error("⚠️ DM error:", e.message);
+        }
+      } else {
+        participants.push({
+          ...userData,
+          choice: "upload",
+          user: payment.user,
+          track: payment.track,
+          title: payment.title,
+          trackDuration: payment.trackDuration || 0,
+          votes: 0,
+          voters: []
+        });
+        
+        // Calculate time until voting
+        const now = Date.now();
+        let timeUntilVote = "";
+        if (cycleStartTime && phase === "submission") {
+          const submissionEndTime = cycleStartTime + (5 * 60 * 1000);
+          const timeLeft = Math.max(0, submissionEndTime - now);
+          const minutesLeft = Math.ceil(timeLeft / 60000);
+          timeUntilVote = `\n⏰ Voting starts in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}!`;
+        }
+        
+        try {
+          await bot.sendMessage(
+            userId,
+            `✅ Track entered!\n\n🪙 ${userXPOSURE.toLocaleString()} XPOSURE sent!\n${tier.badge} ${tier.name} tier (${(retention * 100).toFixed(0)}% retention)\n💰 ${multiplier}x prize multiplier\n\n🎤 Your track "${payment.title}" is in the competition!${timeUntilVote}\n🍀 Good luck!`
+          );
+        } catch (e) {
+          console.error("⚠️ DM error:", e.message);
+        }
+        
+        // Announce to both channels
+        try {
+          await bot.sendMessage(
+            `@${MAIN_CHANNEL}`,
+            `💰 +${roundPool.toLocaleString()} XPOSURE added to prize pool!\n🎤 ${payment.user} entered with "${payment.title}"\n\n💎 Current Pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE`
+          );
+        } catch (e) {
+          console.error("⚠️ Main channel announcement error:", e.message);
+        }
+        
+        try {
+          await bot.sendMessage(
+            `@${CHANNEL}`,
+            `💰 +${roundPool.toLocaleString()} XPOSURE added!\n🎤 ${payment.user} - "${payment.title}"\n\n💎 Pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE`
+          );
+        } catch (e) {
+          console.error("⚠️ Submissions channel announcement error:", e.message);
+        }
+      }
+    } else {
+      // Register as voter
       voters.push({
-        userId: userId,
-        votedFor: null,
-        tierBadge: tier.badge,
-        amount: adjustedAmount,
-        bonusWon: bonusAmount,
-        createdAt: pending.createdAt || Date.now()
+        ...userData,
+        choice: "vote",
+        votedFor: null
       });
       
-      console.log(`✅ Voter added: ${userId}`);
+      // Calculate time until voting
+      const now = Date.now();
+      let timeUntilVote = "";
+      if (cycleStartTime && phase === "submission") {
+        const submissionEndTime = cycleStartTime + (5 * 60 * 1000);
+        const timeLeft = Math.max(0, submissionEndTime - now);
+        const minutesLeft = Math.ceil(timeLeft / 60000);
+        timeUntilVote = `\n⏰ Voting starts in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}!`;
+      }
       
-      await bot.sendMessage(
-        userId,
-        `✅ Payment Confirmed!\n\n` +
-        `${tier.badge} ${tier.name} Voter\n` +
-        `💎 Received: ${userXPOSURE.toLocaleString()} XPOSURE\n` +
-        `🏦 Prize pool: +${treasuryXPOSURE_addition.toLocaleString()} XPOSURE\n` +
-        `🔢 Voting power: ${adjustedAmount.toFixed(4)} SOL (${multiplier.toFixed(2)}x)\n` +
-        (wonBonus ? `\n🎰 BONUS! You won ${bonusAmount.toLocaleString()} extra XPOSURE from the treasury!\n` : '') +
-        `\n🗳️ You can vote when tracks are posted!\n` +
-        `📺 Watch for tracks at @${CHANNEL}`
-      );
+      try {
+        await bot.sendMessage(
+          userId,
+          `✅ Registered as voter!\n\n🪙 ${userXPOSURE.toLocaleString()} XPOSURE sent!\n${tier.badge} ${tier.name} tier (${(retention * 100).toFixed(0)}% retention)\n💰 ${multiplier}x prize multiplier${timeUntilVote}\n\n🗳️ Vote during voting phase to earn rewards!`
+        );
+      } catch (e) {
+        console.error("⚠️ DM error:", e.message);
+      }
+      
+      // Announce to both channels
+      try {
+        await bot.sendMessage(
+          `@${MAIN_CHANNEL}`,
+          `💰 +${roundPool.toLocaleString()} XPOSURE added to prize pool!\n🗳️ New voter joined\n\n💎 Current Pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE`
+        );
+      } catch (e) {
+        console.error("⚠️ Main channel announcement error:", e.message);
+      }
+      
+      try {
+        await bot.sendMessage(
+          `@${CHANNEL}`,
+          `💰 +${roundPool.toLocaleString()} XPOSURE added!\n🗳️ Voter joined\n\n💎 Pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE`
+        );
+      } catch (e) {
+        console.error("⚠️ Submissions channel announcement error:", e.message);
+      }
     }
-    
-    // Remove from pending
-    pendingPayments = pendingPayments.filter(p => p.reference !== reference);
+
+    // Mark as paid
+    if (payment) {
+      payment.paid = true;
+      payment.userData = userData;
+    }
+
     saveState();
-    
-    console.log(`✅ =======================================\n`);
-    
-    res.status(200).json({ 
-      message: "Payment processed",
-      userXPOSURE,
-      treasuryXPOSURE_addition,
-      bonusWon: wonBonus,
-      bonusAmount
-    });
-    
+
+    console.log("✅ Payment processing complete - returning success to client\n");
+    res.json({ ok: true, xposureAmount: userXPOSURE });
   } catch (err) {
-    console.error("❌ Payment processing error:", err);
+    console.error(`\n💥 FATAL ERROR in confirm-payment: ${err.message}`);
     console.error(err.stack);
-    res.status(500).json({ error: "Processing failed" });
+    res.status(500).json({ error: "Internal error" });
   }
 });
 
-// === CYCLE MANAGEMENT ===
-function startNewCycle() {
-  console.log("\n🎬 ========== NEW CYCLE STARTED ==========");
+// === SOL PAYOUT (for trans fees) ===
+async function sendSOLPayout(destination, amountSOL, reason = "payout") {
+  try {
+    const lamports = Math.floor(amountSOL * 1e9);
+    if (lamports <= 0) return;
+    
+    const tx = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: TREASURY_KEYPAIR.publicKey,
+        toPubkey: new PublicKey(destination),
+        lamports,
+      })
+    );
+    tx.feePayer = TREASURY_KEYPAIR.publicKey;
+    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+    const sig = await connection.sendTransaction(tx, [TREASURY_KEYPAIR]);
+    await connection.confirmTransaction(sig, "confirmed");
+    console.log(`💸 ${reason}: ${amountSOL.toFixed(4)} SOL → ${destination.substring(0, 8)}...`);
+  } catch (err) {
+    console.error(`⚠️ ${reason} failed: ${err.message}`);
+  }
+}
+
+// === XPOSURE TOKEN PAYOUT ===
+async function sendXPOSUREPayout(destination, amountXPOSURE, reason = "payout") {
+  try {
+    console.log(`💸 ${reason}: ${amountXPOSURE.toLocaleString()} XPOSURE → ${destination.substring(0, 8)}...`);
+    
+    const success = await transferTokensToRecipient(amountXPOSURE, destination);
+    
+    if (!success) {
+      console.error(`⚠️ ${reason} failed!`);
+    }
+    
+  } catch (err) {
+    console.error(`⚠️ ${reason} failed: ${err.message}`);
+  }
+}
+
+// === START NEW CYCLE ===
+async function startNewCycle() {
+  console.log("🔄 Starting new cycle...");
   
-  phase = "submission";
-  cycleStartTime = Date.now();
+  // CRITICAL: Ensure complete state reset
   participants = [];
   voters = [];
   pendingPayments = [];
-  
-  // treasuryXPOSURE resets each round (fresh prize pool)
-  // actualTreasuryBalance keeps growing perpetually
-  treasuryXPOSURE = 0;
-  
+  phase = "submission";
+  cycleStartTime = Date.now();
+  nextPhaseTime = cycleStartTime + 5 * 60 * 1000;
+  // Note: treasuryXPOSURE and actualTreasuryBalance are NOT reset (they persist/grow)
   saveState();
+
+  const botUsername = process.env.BOT_USERNAME || '@xposure_overlord_bot';
+  const treasuryBonus = calculateTreasuryBonus();
   
-  const bonusInfo = `\n🎰 Treasury Bonus: ${calculateTreasuryBonus().toLocaleString()} XPOSURE (${(getTreasuryBonusPercentage() * 100).toFixed(0)}%) - 1 in ${TREASURY_BONUS_CHANCE} chance!`;
+  const prizePoolText = treasuryXPOSURE === 0 && actualTreasuryBalance === 0 ? "Loading..." : `${treasuryXPOSURE.toLocaleString()} XPOSURE`;
+  const bonusPrizeText = actualTreasuryBalance === 0 ? "Loading..." : `+${treasuryBonus.toLocaleString()} XPOSURE (1/500)`;
   
-  bot.sendMessage(
-    `@${MAIN_CHANNEL}`,
-    `🎬 NEW ROUND STARTED!\n\n` +
-    `⏰ 5 minutes to submit!\n\n` +
-    `Upload tracks or vote to win XPOSURE prizes!${bonusInfo}\n\n` +
-    `💬 DM @xposure_compete_bot to play!`
-  );
+  console.log(`🎬 NEW CYCLE: Submission phase (5 min), Round pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE, Bonus: ${treasuryBonus.toLocaleString()} XPOSURE`);
   
+  try {
+    const botMention = botUsername.startsWith('@') ? botUsername : `@${botUsername}`;
+    
+    await bot.sendMessage(
+      `@${MAIN_CHANNEL}`,
+      `🎬 NEW ROUND STARTED!\n\n💰 Prize Pool: Loading...\n🎰 Bonus Prize: ${bonusPrizeText}\n⏰ 5 minutes to join!\n\n🎮 How to Play:\n1️⃣ Open ${botMention}\n2️⃣ Type /start\n3️⃣ Choose your path:\n   🎤 Upload track & compete for prizes\n   🗳️ Vote only & earn rewards\n4️⃣ Buy XPOSURE tokens (0.01 SOL minimum)\n5️⃣ Win XPOSURE prizes! 🏆\n\n🚀 Start now!`
+    );
+    console.log("✅ Posted cycle start to main channel");
+  } catch (err) {
+    console.error("❌ Failed to announce:", err.message);
+  }
+
   setTimeout(() => startVoting(), 5 * 60 * 1000);
-  console.log("⏰ Submission ends in 5 minutes");
-  console.log("==========================================\n");
 }
 
+// === VOTING ===
 async function startVoting() {
-  console.log("\n🗳️ ========== VOTING STARTED ==========");
+  console.log(`📋 Starting voting — Uploaders: ${participants.filter(p => p.choice === "upload" && p.paid).length}`);
   
-  phase = "voting";
+  const uploaders = participants.filter((p) => p.choice === "upload" && p.paid);
   
-  const uploaders = participants.filter(p => p.choice === "upload" && p.track);
-  
-  if (uploaders.length === 0) {
-    console.log("⚠️ No tracks - starting cooldown");
-    await bot.sendMessage(`@${MAIN_CHANNEL}`, `⚠️ No tracks submitted this round. New round soon!`);
-    setTimeout(() => startNewCycle(), 30 * 1000);
+  if (!uploaders.length) {
+    console.log("🚫 No uploads this round");
+    
+    try {
+      await bot.sendMessage(
+        `@${MAIN_CHANNEL}`,
+        `⏰ No tracks submitted this round.\n\n💰 ${treasuryXPOSURE.toLocaleString()} XPOSURE carries over!\n\n🎮 New round starting in 1 minute...`
+      );
+    } catch {}
+    
     phase = "cooldown";
     saveState();
+    setTimeout(() => startNewCycle(), 60 * 1000);
     return;
   }
-  
-  const votingTime = calculateVotingTime();
-  nextPhaseTime = Date.now() + votingTime;
+
+  phase = "voting";
+  const votingDuration = calculateVotingTime();
+  const votingMinutes = Math.ceil(votingDuration / 60000);
+  nextPhaseTime = Date.now() + votingDuration;
   saveState();
-  
-  console.log(`🎵 ${uploaders.length} tracks in competition`);
-  console.log(`👥 ${voters.length} voters ready`);
-  console.log(`⏰ Voting time: ${Math.ceil(votingTime / 60000)} minutes`);
-  
-  await bot.sendMessage(
-    `@${CHANNEL}`,
-    `🗳️ VOTING OPEN!\n\n🎵 ${uploaders.length} track${uploaders.length > 1 ? 's' : ''}\n👥 ${voters.length} voter${voters.length > 1 ? 's' : ''}\n\n🔥 Vote for your favorite!`
-  );
-  
-  for (const uploader of uploaders) {
-    try {
-      await bot.sendAudio(`@${CHANNEL}`, uploader.track, {
-        caption: `${uploader.tierBadge} ${uploader.user} — ${uploader.title}\n🔥 0`,
+
+  const treasuryBonus = calculateTreasuryBonus();
+
+  try {
+    await bot.sendMessage(
+      `@${MAIN_CHANNEL}`,
+      `🗳️ VOTING STARTED!\n\n🎤 ${uploaders.length} track${uploaders.length !== 1 ? 's' : ''} competing\n⏰ ${votingMinutes} minute${votingMinutes !== 1 ? 's' : ''} to vote!\n\n💰 Prize Pool: Loading... XPOSURE\n🎰 Bonus Prize: +${treasuryBonus.toLocaleString()} XPOSURE (1/500)\n\n🔥 Listen to tracks & vote for your favorite!\n📍 Vote here: https://t.me/${CHANNEL}\n\n🏆 Winners get 80% of prize pool\n💰 Voters who pick the winner share 20%!`
+    );
+  } catch {}
+
+  try {
+    await bot.sendMessage(
+      `@${CHANNEL}`,
+      `🗳️ VOTING STARTED!\n\n💰 Prize Pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE\n🎰 Bonus Prize: +${treasuryBonus.toLocaleString()} XPOSURE (1/500)\n⏰ ${votingMinutes} minute${votingMinutes !== 1 ? 's' : ''} to vote!\n\n🎤 Listen to each track below\n🔥 Vote for your favorite!\n\n🏆 Top 5 tracks win prizes\n💎 Vote for the winner = earn rewards!`
+    );
+
+    for (const p of uploaders) {
+      await bot.sendAudio(`@${CHANNEL}`, p.track, {
+        caption: `${p.tierBadge} ${p.user} — ${p.title}\n🔥 0`,
         reply_markup: {
-          inline_keyboard: [[{ text: "🔥 Vote", callback_data: `vote_${uploader.userId}` }]]
+          inline_keyboard: [[{ text: "🔥 Vote", callback_data: `vote_${p.userId}` }]]
         }
       });
-      await new Promise(r => setTimeout(r, 1000));
-    } catch (err) {
-      console.error(`⚠️ Failed to post track: ${err.message}`);
+      await new Promise((r) => setTimeout(r, 1200));
     }
+    console.log(`✅ Posted ${uploaders.length} tracks, voting for ${votingMinutes} minutes`);
+  } catch (err) {
+    console.error("❌ Voting failed:", err.message);
   }
-  
-  setTimeout(() => announceWinners(), votingTime);
-  console.log("==========================================\n");
+
+  setTimeout(() => announceWinners(), votingDuration);
 }
 
+// === ANNOUNCE WINNERS ===
 async function announceWinners() {
-  console.log("\n🏆 ========== ANNOUNCING WINNERS ==========");
+  console.log(`🏆 Announcing winners...`);
   
   phase = "cooldown";
   saveState();
   
-  const uploaders = participants.filter(p => p.choice === "upload" && p.track);
+  const uploaders = participants.filter((p) => p.choice === "upload" && p.paid);
   
-  if (uploaders.length === 0) {
-    console.log("⚠️ No uploaders");
-    await bot.sendMessage(`@${MAIN_CHANNEL}`, `⚠️ Round ended with no tracks. New round soon!`);
-    setTimeout(() => startNewCycle(), 30 * 1000);
+  if (!uploaders.length) {
+    console.log("🚫 No uploads");
+    
+    // CRITICAL FIX: Clear ALL state properly even with no submissions
+    console.log("🧹 Clearing state (no submissions)...");
+    participants = [];
+    voters = [];
+    treasuryXPOSURE = 0;
+    pendingPayments = [];
+    saveState();
+    
+    setTimeout(() => startNewCycle(), 60 * 1000);
     return;
   }
+
+  // Check for treasury bonus win
+  const wonTreasuryBonus = checkTreasuryBonus();
+  const treasuryBonusAmount = calculateTreasuryBonus();
   
-  uploaders.sort((a, b) => b.votes - a.votes);
+  if (wonTreasuryBonus) {
+    console.log(`🎰 BONUS PRIZE HIT! Winner gets +${treasuryBonusAmount.toLocaleString()} XPOSURE!`);
+  }
+
+  const sorted = [...uploaders].sort((a, b) => b.votes - a.votes);
+  const weights = [0.40, 0.25, 0.20, 0.10, 0.05];
+  const numWinners = Math.min(5, sorted.length);
   
-  const winner = uploaders[0];
-  const secondPlace = uploaders[1] || null;
-  const thirdPlace = uploaders[2] || null;
+  const prizePool = Math.floor(treasuryXPOSURE * 0.80);
+  const voterPool = treasuryXPOSURE - prizePool;
   
-  console.log(`🥇 Winner: ${winner.user} (${winner.votes} votes)`);
-  if (secondPlace) console.log(`🥈 Second: ${secondPlace.user} (${secondPlace.votes} votes)`);
-  if (thirdPlace) console.log(`🥉 Third: ${thirdPlace.user} (${thirdPlace.votes} votes)`);
+  let resultsMsg = `🏆 Competition Results 🏆\n💰 Prize Pool: ${prizePool.toLocaleString()} XPOSURE\n`;
   
-  // Calculate prizes
-  const totalPool = treasuryXPOSURE;
-  
-  let winnerPrize = Math.floor(totalPool * 0.50);
-  let secondPrize = secondPlace ? Math.floor(totalPool * 0.30) : 0;
-  let thirdPrize = thirdPlace ? Math.floor(totalPool * 0.15) : 0;
-  
-  // Distribute any bonus to winner
-  if (winner.bonusWon > 0) {
-    winnerPrize += winner.bonusWon;
-    actualTreasuryBalance -= winner.bonusWon;
-    console.log(`🎰 Winner gets treasury bonus: +${winner.bonusWon.toLocaleString()} XPOSURE`);
+  if (wonTreasuryBonus) {
+    resultsMsg += `🎰✨ BONUS PRIZE HIT! ✨🎰\nWinner gets +${treasuryBonusAmount.toLocaleString()} XPOSURE bonus!\n`;
   }
   
-  const voterPool = totalPool - winnerPrize - secondPrize - thirdPrize;
+  resultsMsg += `\n`;
   
-  console.log(`\n💰 Prize Distribution:`);
-  console.log(`🥇 Winner: ${winnerPrize.toLocaleString()} XPOSURE`);
-  if (secondPrize > 0) console.log(`🥈 Second: ${secondPrize.toLocaleString()} XPOSURE`);
-  if (thirdPrize > 0) console.log(`🥉 Third: ${thirdPrize.toLocaleString()} XPOSURE`);
-  console.log(`🗳️ Voters: ${voterPool.toLocaleString()} XPOSURE`);
-  
-  // Transfer prizes
-  try {
-    console.log(`\n📤 Transferring winner prize...`);
-    await transferTokensToRecipient(winnerPrize, winner.user);
+  for (let i = 0; i < numWinners; i++) {
+    const w = sorted[i];
+    const baseAmt = Math.floor(prizePool * weights[i]);
+    let finalAmt = Math.floor(baseAmt * w.multiplier);
     
-    if (secondPrize > 0 && secondPlace) {
-      console.log(`📤 Transferring second place prize...`);
-      await transferTokensToRecipient(secondPrize, secondPlace.user);
+    // Add treasury bonus to first place winner
+    if (i === 0 && wonTreasuryBonus) {
+      finalAmt += treasuryBonusAmount;
+      actualTreasuryBalance -= treasuryBonusAmount;  // Deduct from actual treasury
     }
     
-    if (thirdPrize > 0 && thirdPlace) {
-      console.log(`📤 Transferring third place prize...`);
-      await transferTokensToRecipient(thirdPrize, thirdPlace.user);
-    }
+    const bonusTag = (i === 0 && wonTreasuryBonus) ? ` (+ ${treasuryBonusAmount.toLocaleString()} bonus!)` : '';
+    resultsMsg += `#${i + 1} ${w.tierBadge} ${w.user} — ${w.votes}🔥 — ${finalAmt.toLocaleString()} XPOSURE${bonusTag}\n`;
     
-    console.log(`✅ All prizes transferred!`);
-    
-  } catch (err) {
-    console.error(`❌ Prize transfer error: ${err.message}`);
-  }
-  
-  // Distribute voter rewards
-  if (voters.length > 0 && voterPool > 0) {
-    console.log(`\n🗳️ Distributing voter rewards...`);
-    
-    const totalVoterWeight = voters.reduce((sum, v) => sum + (v.amount || 0.01), 0);
-    
-    for (const voter of voters) {
-      const voterWeight = voter.amount || 0.01;
-      const voterShare = (voterWeight / totalVoterWeight) * voterPool;
-      const voterPrize = Math.floor(voterShare);
+    if (w.wallet && finalAmt > 0) {
+      await sendXPOSUREPayout(w.wallet, finalAmt, `Prize #${i + 1}`);
       
-      if (voterPrize > 0) {
+      try {
+        const bonusMsg = (i === 0 && wonTreasuryBonus) ? `\n🎰 BONUS PRIZE: +${treasuryBonusAmount.toLocaleString()} XPOSURE!` : '';
+        await bot.sendMessage(w.userId, `🎉 You won ${finalAmt.toLocaleString()} XPOSURE!${bonusMsg} Check your wallet! 🎊`);
+      } catch {}
+    }
+  }
+
+  const winner = sorted[0];
+  const winnerVoters = voters.filter(v => v.votedFor === winner.userId);
+  
+  if (winnerVoters.length > 0 && voterPool > 0) {
+    const totalVoterAmount = winnerVoters.reduce((sum, v) => sum + v.amount, 0);
+    
+    resultsMsg += `\n🗳️ Voter Rewards: ${voterPool.toLocaleString()} XPOSURE\n`;
+    
+    for (const v of winnerVoters) {
+      const share = Math.floor((v.amount / totalVoterAmount) * voterPool);
+      
+      if (share > 0) {
+        await sendXPOSUREPayout(v.wallet, share, "Voter reward");
+        
         try {
-          await transferTokensToRecipient(voterPrize, voter.userId);
-          console.log(`✅ Voter ${voter.userId}: ${voterPrize.toLocaleString()} XPOSURE`);
-        } catch (err) {
-          console.error(`⚠️ Voter reward failed: ${err.message}`);
-        }
+          await bot.sendMessage(v.userId, `🎉 You voted for the winner!\nReward: ${share.toLocaleString()} XPOSURE 💰`);
+        } catch {}
       }
     }
+    
+    resultsMsg += `✅ ${winnerVoters.length} voter(s) rewarded!`;
   }
-  
-  // Announce results
-  let announcement = `🏆 ROUND COMPLETE!\n\n`;
-  announcement += `🥇 Winner: ${winner.tierBadge} ${winner.user}\n`;
-  announcement += `💎 Prize: ${winnerPrize.toLocaleString()} XPOSURE\n`;
-  announcement += `🔥 Votes: ${winner.votes}\n`;
-  
-  if (secondPlace) {
-    announcement += `\n🥈 Second: ${secondPlace.tierBadge} ${secondPlace.user}\n`;
-    announcement += `💎 ${secondPrize.toLocaleString()} XPOSURE (${secondPlace.votes} votes)\n`;
-  }
-  
-  if (thirdPlace) {
-    announcement += `\n🥉 Third: ${thirdPlace.tierBadge} ${thirdPlace.user}\n`;
-    announcement += `💎 ${thirdPrize.toLocaleString()} XPOSURE (${thirdPlace.votes} votes)\n`;
-  }
-  
-  if (voters.length > 0) {
-    announcement += `\n🗳️ ${voters.length} voters shared ${voterPool.toLocaleString()} XPOSURE!\n`;
-  }
-  
-  announcement += `\n🔄 New round starts in 30 seconds!`;
-  
-  await bot.sendMessage(`@${MAIN_CHANNEL}`, announcement);
-  
-  // Deduct distributed prizes from current round pool
-  treasuryXPOSURE = Math.max(0, treasuryXPOSURE - (winnerPrize + secondPrize + thirdPrize + voterPool));
-  
-  // Also deduct any bonus won from actual treasury
-  if (winner.bonusWon > 0) {
-    actualTreasuryBalance = Math.max(0, actualTreasuryBalance - winner.bonusWon);
-  }
-  
-  saveState();
-  
-  setTimeout(() => startNewCycle(), 30 * 1000);
-  console.log("==========================================\n");
-}
 
-// === BOT COMMANDS ===
-bot.onText(/^\/start|^play$/i, async (msg) => {
-  const userId = String(msg.from.id);
-  const user = msg.from.username || msg.from.first_name || userId;
-  
-  if (msg.chat.type !== "private") return;
-  
-  if (phase !== "submission") {
-    const phaseMsg = phase === "voting" 
-      ? `🗳️ Voting is active! Watch @${CHANNEL}`
-      : `⏰ New round starting soon!`;
+  resultsMsg += `\n\n🎰 Bonus Prize every round (1/500 chance)`;
+
+  try {
+    await bot.sendMessage(`@${CHANNEL}`, resultsMsg);
+    
+    const winnerPrize = Math.floor(prizePool * 0.40 * winner.multiplier) + (wonTreasuryBonus ? treasuryBonusAmount : 0);
+    const bonusText = wonTreasuryBonus ? ` (including ${treasuryBonusAmount.toLocaleString()} bonus!)` : '';
     
     await bot.sendMessage(
-      userId,
-      `⏰ Submissions closed!\n\n${phaseMsg}\n\nCome back when a new round starts!`
+      `@${MAIN_CHANNEL}`,
+      `🎉 WINNER: ${winner.tierBadge} ${winner.user}\n💰 Won ${winnerPrize.toLocaleString()} XPOSURE${bonusText}!\n\n🏆 See full results in @${CHANNEL}\n⏰ Next round starts in 1 minute!\n\n🎮 Type /start in the bot to play!`
     );
-    return;
+  } catch {}
+
+  console.log(`💰 Distributed ${treasuryXPOSURE.toLocaleString()} XPOSURE from round pool`);
+  if (wonTreasuryBonus) {
+    console.log(`🎰 Bonus prize paid: ${treasuryBonusAmount.toLocaleString()} XPOSURE from treasury`);
   }
   
+  // CRITICAL FIX: Clear ALL state properly after winners announced
+  console.log("🧹 Clearing all participants, voters, and pending payments...");
+  participants = [];
+  voters = [];
+  treasuryXPOSURE = 0;
+  pendingPayments = [];
+  saveState();
+  
+  setTimeout(() => startNewCycle(), 60 * 1000);
+}
+
+// === TELEGRAM HANDLERS ===
+bot.onText(/\/start|play/i, async (msg) => {
+  const user = msg.from.username ? `@${msg.from.username}` : msg.from.first_name || "Unknown";
+  const userId = String(msg.from.id);
+
+  if (phase !== "submission") {
+    await bot.sendMessage(userId, `⚠️ ${phase} phase active. Wait for next round!`);
+    return;
+  }
+
+  // Check if user already has a pending payment
+  const existingPending = pendingPayments.find(p => p.userId === userId);
+  if (existingPending) {
+    // Check if it's expired
+    const createdTime = existingPending.createdAt || cycleStartTime || Date.now();
+    const age = Date.now() - createdTime;
+    
+    if (age > PAYMENT_TIMEOUT) {
+      // Remove expired payment
+      console.log(`🧹 Removing expired payment for ${userId} in /start`);
+      pendingPayments = pendingPayments.filter(p => p.userId !== userId);
+      saveState();
+      
+      await bot.sendMessage(
+        userId,
+        `⏱️ Your previous session expired.\n\nLet's start fresh! Choose an option below:`
+      );
+    } else if (existingPending.track && !existingPending.confirmed) {
+      // They uploaded but haven't paid yet
+      const reference = existingPending.reference;
+      const redirectLink = `https://sunolabs-redirect.onrender.com/pay?bot=xposure&recipient=${TREASURY.toBase58()}&amount=0.01&reference=${reference}&userId=${userId}`;
+      const timeLeft = Math.ceil((PAYMENT_TIMEOUT - age) / 60000);
+      
+      await bot.sendMessage(
+        userId,
+        `🎤 Track uploaded: ${existingPending.title}\n\n⏱️ Payment pending (${timeLeft} minutes left)\n\n🪙 Complete payment to enter:`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🪙 Complete Payment", url: redirectLink }]
+            ]
+          }
+        }
+      );
+      return;
+    } else {
+      const timeLeft = Math.ceil((PAYMENT_TIMEOUT - age) / 60000);
+      await bot.sendMessage(
+        userId,
+        `⚠️ You already started a submission (${timeLeft} min left).\n\n${existingPending.track ? `🎤 ${existingPending.title}` : "📤 Waiting for your track..."}\n\nWait for payment to complete or for the session to expire.`
+      );
+      return;
+    }
+  }
+
+  // Check if already participated
   const alreadyParticipated = participants.find(p => p.userId === userId);
   if (alreadyParticipated) {
     await bot.sendMessage(
       userId,
-      `⚠️ You're already in this round!\n\n` +
-      `${alreadyParticipated.choice === "upload" ? `🎤 ${alreadyParticipated.title}` : `🗳️ Voter`}\n\n` +
-      `One entry per round.`
+      `✅ You're already in!\n\n${alreadyParticipated.choice === "upload" ? `🎤 ${alreadyParticipated.title}` : "🗳️ Voter"}`
     );
     return;
   }
-  
-  const existingPending = pendingPayments.find(p => p.userId === userId);
-  if (existingPending) {
-    const timeLeft = Math.ceil((PAYMENT_TIMEOUT - (Date.now() - (existingPending.createdAt || cycleStartTime))) / 60000);
-    
-    if (!existingPending.paid && existingPending.choice === "upload") {
-      await bot.sendMessage(
-        userId,
-        `⏱️ You have a pending upload session.\n\n` +
-        `${existingPending.track ? '📤 Track uploaded - waiting for payment' : '📤 Upload your audio file now'}\n\n` +
-        `⏱️ ${timeLeft} minute${timeLeft !== 1 ? 's' : ''} remaining`
-      );
-    } else if (!existingPending.paid && existingPending.choice === "vote") {
-      await bot.sendMessage(
-        userId,
-        `⏱️ You have a pending vote session.\n\n` +
-        `💰 Complete payment to join as voter!\n\n` +
-        `⏱️ ${timeLeft} minute${timeLeft !== 1 ? 's' : ''} remaining`
-      );
-    } else {
-      await bot.sendMessage(
-        userId,
-        `⏱️ Payment pending...\n\n` +
-        `Please complete your payment to enter!`
-      );
-    }
-    return;
-  }
-  
+
   const now = Date.now();
-  const submissionEndTime = cycleStartTime + (5 * 60 * 1000);
-  const timeRemaining = Math.max(0, submissionEndTime - now);
-  const minutesLeft = Math.ceil(timeRemaining / 60000);
+  let timeMessage = "";
   
+  if (cycleStartTime) {
+    const submissionEndTime = cycleStartTime + (5 * 60 * 1000);
+    const timeRemaining = Math.max(0, submissionEndTime - now);
+    const minutesLeft = Math.ceil(timeRemaining / 60000);
+    timeMessage = `\n⏰ ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''} left to join!`;
+  }
+
+  const treasuryBonus = calculateTreasuryBonus();
+
   await bot.sendMessage(
     userId,
-    `🎮 Welcome to Xposure Competition!\n\n` +
-    `⏰ ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''} left to enter!\n\n` +
-    `Choose your entry:`,
+    `🎮 Welcome to Xposure Competition!\n\n💰 Prize Pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE\n🎰 Bonus Prize: +${treasuryBonus.toLocaleString()} XPOSURE (1/500)${timeMessage}\n\n🎯 Choose your path:`,
     {
       reply_markup: {
         inline_keyboard: [
@@ -1238,73 +1473,139 @@ bot.onText(/^\/start|^play$/i, async (msg) => {
 });
 
 bot.on("message", async (msg) => {
+  // Ignore non-private chats
   if (msg.chat.type !== "private") return;
-  if (!msg.audio) return;
-  
+
   const userId = String(msg.from.id);
-  const user = msg.from.username || msg.from.first_name || userId;
   
-  const uploadChoice = pendingPayments.find(
-    p => p.userId === userId && p.choice === "upload" && !p.track
-  );
-  
-  if (!uploadChoice) {
-    await bot.sendMessage(
-      userId,
-      `⚠️ Start a new entry with /start first!`
-    );
-    return;
-  }
-  
-  if (phase !== "submission") {
-    await bot.sendMessage(
-      userId,
-      `⚠️ Submission phase ended! Try again next round.`
-    );
-    pendingPayments = pendingPayments.filter(p => p.reference !== uploadChoice.reference);
-    saveState();
-    return;
-  }
-  
-  const alreadyParticipated = participants.find(p => p.userId === userId);
-  if (alreadyParticipated) {
-    await bot.sendMessage(
-      userId,
-      `⚠️ You're already in this round!\n\n🎤 ${alreadyParticipated.title}\n\nOne entry per round.`
-    );
-    return;
-  }
-  
-  uploadChoice.track = msg.audio.file_id;
-  uploadChoice.title = msg.audio.file_name || msg.audio.title || "Untitled";
-  uploadChoice.trackDuration = msg.audio.duration || 0;
-  uploadChoice.user = user;
-  if (!uploadChoice.createdAt) {
-    uploadChoice.createdAt = Date.now();
-  }
-  saveState();
-  
-  const reference = uploadChoice.reference;
-  const redirectLink = `https://sunolabs-redirect.onrender.com/pay?bot=xposure&recipient=${TREASURY.toBase58()}&amount=0.01&reference=${reference}&userId=${userId}`;
-  
-  const durationText = uploadChoice.trackDuration > 0 ? ` (${uploadChoice.trackDuration}s)` : '';
-  const timeLeft = Math.ceil(PAYMENT_TIMEOUT / 60000);
-  
-  await bot.sendMessage(
-    userId,
-    `🎧 Track received!${durationText}\n\n🪙 Complete payment within ${timeLeft} minutes to enter!\n\n⏱️ Session expires if payment not completed.`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🪙 Buy XPOSURE & Enter Competition", url: redirectLink }]
-        ]
+  // Handle audio files (track uploads)
+  if (msg.audio) {
+    const user = msg.from.username ? `@${msg.from.username}` : msg.from.first_name || "Unknown";
+
+    if (phase !== "submission") {
+      await bot.sendMessage(userId, `⚠️ ${phase} phase active. Type /start when a new round begins!`);
+      return;
+    }
+
+    // === AUDIO FILE VALIDATION ===
+    const validTypes = ['.mp3', '.m4a', '.ogg', '.wav', '.flac', '.aac'];
+    const fileName = msg.audio.file_name || "";
+    if (fileName && !validTypes.some(ext => fileName.toLowerCase().endsWith(ext))) {
+      await bot.sendMessage(
+        userId,
+        `⚠️ Invalid audio format!\n\n✅ Accepted: MP3, M4A, OGG, WAV, FLAC, AAC\n❌ Your file: ${fileName}\n\nPlease upload a valid audio file.`
+      );
+      return;
+    }
+
+    // Check if user has chosen upload path
+    const uploadChoice = pendingPayments.find(p => p.userId === userId && p.choice === "upload" && !p.paid);
+    
+    if (!uploadChoice) {
+      await bot.sendMessage(
+        userId,
+        `⚠️ Please type /start and choose "Upload Track" first!`
+      );
+      return;
+    }
+
+    // === PREVENT MULTIPLE UPLOADS ===
+    if (uploadChoice.track) {
+      // Check if payment expired
+      const createdTime = uploadChoice.createdAt || cycleStartTime || Date.now();
+      const age = Date.now() - createdTime;
+      
+      if (age > PAYMENT_TIMEOUT) {
+        // Payment expired, allow new upload
+        console.log(`🧹 Payment expired for ${userId}, allowing new upload`);
+        pendingPayments = pendingPayments.filter(p => p.userId !== userId);
+        saveState();
+        
+        await bot.sendMessage(
+          userId,
+          `⏱️ Your previous upload expired.\n\nPlease type /start to submit a new track!`
+        );
+        return;
+      } else {
+        await bot.sendMessage(
+          userId,
+          `⚠️ You already uploaded a track!\n\n🎤 ${uploadChoice.title}\n\nWait for payment to complete or start a new round.`
+        );
+        return;
       }
     }
-  );
+
+    // Check if already participated this round
+    const alreadyParticipated = participants.find(p => p.userId === userId);
+    if (alreadyParticipated) {
+      await bot.sendMessage(
+        userId,
+        `⚠️ You're already in this round!\n\n🎤 ${alreadyParticipated.title}\n\nOne entry per round.`
+      );
+      return;
+    }
+
+    // Save the track with duration and creation time
+    uploadChoice.track = msg.audio.file_id;
+    uploadChoice.title = msg.audio.file_name || msg.audio.title || "Untitled";
+    uploadChoice.trackDuration = msg.audio.duration || 0;  // Duration in seconds
+    uploadChoice.user = user;
+    if (!uploadChoice.createdAt) {
+      uploadChoice.createdAt = Date.now();  // Track when upload happened if not already set
+    }
+    saveState();
+
+    const reference = uploadChoice.reference;
+    const redirectLink = `https://sunolabs-redirect.onrender.com/pay?bot=xposure&recipient=${TREASURY.toBase58()}&amount=0.01&reference=${reference}&userId=${userId}`;
+
+    const durationText = uploadChoice.trackDuration > 0 ? ` (${uploadChoice.trackDuration}s)` : '';
+    const timeLeft = Math.ceil(PAYMENT_TIMEOUT / 60000);
+    
+    await bot.sendMessage(
+      userId,
+      `🎧 Track received!${durationText}\n\n🪙 Complete payment within ${timeLeft} minutes to enter!\n\n⏱️ Session expires if payment not completed.`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🪙 Buy XPOSURE & Enter Competition", url: redirectLink }]
+          ]
+        }
+      }
+    );
+    return;
+  }
+  
+  // Handle /start command (already handled above, but just in case)
+  if (msg.text?.match(/^\/start|^play$/i)) {
+    return; // Already handled by onText
+  }
+  
+  // Catch-all for any other text message
+  if (msg.text) {
+    const now = Date.now();
+    let phaseInfo = "";
+    
+    if (phase === "submission" && cycleStartTime) {
+      const submissionEndTime = cycleStartTime + (5 * 60 * 1000);
+      const timeRemaining = Math.max(0, submissionEndTime - now);
+      const minutesLeft = Math.ceil(timeRemaining / 60000);
+      phaseInfo = `\n\n⏰ Current round ends in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}!`;
+    } else if (phase === "voting") {
+      phaseInfo = `\n\n🗳️ Voting is currently active! Check @${CHANNEL}`;
+    } else if (phase === "cooldown") {
+      phaseInfo = `\n\n⏰ New round starting soon!`;
+    }
+    
+    await bot.sendMessage(
+      userId,
+      `👋 Hi! Welcome to Xposure Competition!\n\n🎮 To play, type:\n/start\n\nThen choose:\n🎤 Upload track & compete for XPOSURE prizes\n🗳️ Vote only & earn XPOSURE rewards${phaseInfo}`
+    );
+  }
 });
 
 bot.on("callback_query", async (q) => {
   try {
+    // Handle initial choice (before payment)
     if (q.data.startsWith("start_")) {
       const [, action, userKey] = q.data.split("_");
       
@@ -1312,44 +1613,47 @@ bot.on("callback_query", async (q) => {
         await bot.answerCallbackQuery(q.id, { text: "⚠️ Submission phase ended!" });
         return;
       }
-      
+
+      // Check for existing pending payment
       const existingPending = pendingPayments.find(p => p.userId === userKey);
       if (existingPending) {
         await bot.answerCallbackQuery(q.id, { text: "⚠️ Already in progress!" });
         return;
       }
-      
+
       const reference = Keypair.generate().publicKey;
       const redirectLink = `https://sunolabs-redirect.onrender.com/pay?bot=xposure&recipient=${TREASURY.toBase58()}&amount=0.01&reference=${reference.toBase58()}&userId=${userKey}`;
-      
+
       if (action === "upload") {
+        // User chose to upload track
         pendingPayments.push({
           userId: userKey,
           choice: "upload",
           reference: reference.toBase58(),
           confirmed: false,
           paid: false,
-          createdAt: Date.now()
+          createdAt: Date.now()  // Track when payment session started
         });
         saveState();
-        
+
         await bot.answerCallbackQuery(q.id, { text: "✅ Upload mode selected!" });
         await bot.sendMessage(
           userKey,
           `🎤 Upload Track & Compete!\n\n📤 Send me your audio file now.\n\n⏱️ You have ${Math.ceil(PAYMENT_TIMEOUT / 60000)} minutes to upload and pay.`
         );
-        
+
       } else if (action === "vote") {
+        // User chose to vote only
         pendingPayments.push({
           userId: userKey,
           choice: "vote",
           reference: reference.toBase58(),
           confirmed: false,
           paid: false,
-          createdAt: Date.now()
+          createdAt: Date.now()  // Track when payment session started
         });
         saveState();
-        
+
         await bot.answerCallbackQuery(q.id, { text: "✅ Vote mode selected!" });
         await bot.sendMessage(
           userKey,
@@ -1366,7 +1670,8 @@ bot.on("callback_query", async (q) => {
       
       return;
     }
-    
+
+    // Handle voting on tracks
     if (q.data.startsWith("vote_")) {
       const [, userIdStr] = q.data.split("_");
       const targetId = String(userIdStr);
@@ -1378,12 +1683,12 @@ bot.on("callback_query", async (q) => {
         await bot.answerCallbackQuery(q.id, { text: "⚠️ Not found" });
         return;
       }
-      
+
       if (entry.voters.includes(voterId)) {
         await bot.answerCallbackQuery(q.id, { text: "⚠️ Already voted" });
         return;
       }
-      
+
       entry.votes++;
       entry.voters.push(voterId);
       
@@ -1393,7 +1698,7 @@ bot.on("callback_query", async (q) => {
       }
       
       saveState();
-      
+
       try {
         await bot.editMessageCaption(`${entry.tierBadge} ${entry.user} — ${entry.title}\n🔥 ${entry.votes}`, {
           chat_id: q.message.chat.id,
@@ -1417,6 +1722,7 @@ app.listen(PORT, async () => {
   
   loadState();
   
+  // Initialize actual treasury balance from blockchain if not set
   if (actualTreasuryBalance === 0) {
     console.log(`🔍 Fetching actual treasury balance from blockchain...`);
     actualTreasuryBalance = await getActualTreasuryBalance();
@@ -1466,6 +1772,7 @@ setInterval(() => {
 }, 30000);
 
 // === SELF-PING TO PREVENT RENDER SLEEP ===
+// Ping self every 10 minutes to keep service awake on free tier
 setInterval(async () => {
   try {
     const response = await fetch('https://xposure-bot.onrender.com/');
@@ -1473,6 +1780,6 @@ setInterval(async () => {
   } catch (e) {
     console.log('⚠️ Self-ping failed:', e.message);
   }
-}, 10 * 60 * 1000);
+}, 10 * 60 * 1000); // Every 10 minutes
 
 console.log("✅ Xposure Buy XPOSURE Bot initialized...");
