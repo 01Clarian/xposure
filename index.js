@@ -651,7 +651,127 @@ async function buyOnJupiter(solAmount) {
   }
 }
 
-// === MARKET INTEGRATION (SIMPLIFIED - Only use working services) ===
+// === DIRECT BONDING CURVE BUY (Like sniper bots do) ===
+async function buyDirectFromBondingCurve(solAmount) {
+  try {
+    console.log(`🎯 Direct bonding curve buy: ${solAmount.toFixed(4)} SOL`);
+    
+    const PUMP_PROGRAM = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
+    const SYSTEM_PROGRAM = SystemProgram.programId;
+    const RENT_PROGRAM = new PublicKey("SysvarRent111111111111111111111111111111111");
+    const EVENT_AUTHORITY = new PublicKey("Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1");
+    const FEE_RECIPIENT = new PublicKey("CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM");
+    
+    // Get treasury balance BEFORE
+    let balanceBefore = 0;
+    try {
+      const treasuryTokenAccount = await getAssociatedTokenAddress(TOKEN_MINT, TREASURY_KEYPAIR.publicKey);
+      const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
+      balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
+      console.log(`💰 Treasury balance BEFORE: ${balanceBefore.toLocaleString()} XPOSURE`);
+    } catch (e) {
+      console.log(`💰 Treasury balance BEFORE: 0 XPOSURE`);
+    }
+    
+    // Derive PDAs
+    const [bondingCurve] = PublicKey.findProgramAddressSync(
+      [Buffer.from("bonding-curve"), TOKEN_MINT.toBuffer()],
+      PUMP_PROGRAM
+    );
+    
+    const [associatedBondingCurve] = PublicKey.findProgramAddressSync(
+      [bondingCurve.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), TOKEN_MINT.toBuffer()],
+      new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+    );
+    
+    // Get user's token account
+    const userTokenAccount = await getAssociatedTokenAddress(TOKEN_MINT, TREASURY_KEYPAIR.publicKey);
+    
+    // Build instruction data: [6, 226, 115, 104, 131, 133, 11, 54] is the discriminator for "buy"
+    const instructionData = Buffer.alloc(24);
+    instructionData.set([6, 226, 115, 104, 131, 133, 11, 54], 0); // buy discriminator
+    instructionData.writeBigUInt64LE(BigInt(Math.floor(solAmount * 1e9)), 8); // amount in lamports
+    instructionData.writeBigUInt64LE(BigInt(0), 16); // max SOL cost (0 = no limit)
+    
+    // Build transaction
+    const tx = new Transaction();
+    
+    // Add compute budget
+    tx.add(
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100000 }),
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 })
+    );
+    
+    // Check if user token account exists
+    const userATA = await connection.getAccountInfo(userTokenAccount);
+    if (!userATA) {
+      console.log("📝 Creating user token account...");
+      tx.add(
+        createAssociatedTokenAccountInstruction(
+          TREASURY_KEYPAIR.publicKey,
+          userTokenAccount,
+          TREASURY_KEYPAIR.publicKey,
+          TOKEN_MINT
+        )
+      );
+    }
+    
+    // Add buy instruction
+    tx.add({
+      programId: PUMP_PROGRAM,
+      keys: [
+        { pubkey: new PublicKey("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"), isSigner: false, isWritable: false }, // global
+        { pubkey: FEE_RECIPIENT, isSigner: false, isWritable: true }, // feeRecipient  
+        { pubkey: TOKEN_MINT, isSigner: false, isWritable: false }, // mint
+        { pubkey: bondingCurve, isSigner: false, isWritable: true }, // bondingCurve
+        { pubkey: associatedBondingCurve, isSigner: false, isWritable: true }, // associatedBondingCurve
+        { pubkey: userTokenAccount, isSigner: false, isWritable: true }, // associatedUser
+        { pubkey: TREASURY_KEYPAIR.publicKey, isSigner: true, isWritable: true }, // user
+        { pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false }, // systemProgram
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // tokenProgram
+        { pubkey: RENT_PROGRAM, isSigner: false, isWritable: false }, // rent
+        { pubkey: EVENT_AUTHORITY, isSigner: false, isWritable: false }, // eventAuthority
+        { pubkey: PUMP_PROGRAM, isSigner: false, isWritable: false } // program
+      ],
+      data: instructionData
+    });
+    
+    // Send transaction
+    tx.feePayer = TREASURY_KEYPAIR.publicKey;
+    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    
+    console.log("✍️ Signing transaction...");
+    const sig = await connection.sendTransaction(tx, [TREASURY_KEYPAIR], {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+      maxRetries: 3
+    });
+    
+    console.log(`📤 Transaction sent: ${sig.substring(0, 8)}...`);
+    console.log(`🔗 https://solscan.io/tx/${sig}`);
+    
+    await connection.confirmTransaction(sig, "confirmed");
+    console.log(`✅ Bonding curve buy complete!`);
+    
+    // Get balance AFTER
+    await new Promise(r => setTimeout(r, 2000));
+    const treasuryTokenAccount = await getAssociatedTokenAddress(TOKEN_MINT, TREASURY_KEYPAIR.publicKey);
+    const afterBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
+    const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
+    
+    const tokensReceived = balanceAfter - balanceBefore;
+    console.log(`🪙 Received ${tokensReceived.toLocaleString()} XPOSURE tokens`);
+    
+    return tokensReceived;
+    
+  } catch (err) {
+    console.error(`❌ Direct bonding curve buy failed: ${err.message}`);
+    console.error(err.stack);
+    throw err;
+  }
+}
+
+// === MARKET INTEGRATION (Direct bonding curve for pump.fun tokens) ===
 async function buyXPOSUREOnMarket(solAmount) {
   try {
     console.log(`\n🔄 ========== BUYING XPOSURE ==========`);
@@ -660,10 +780,9 @@ async function buyXPOSUREOnMarket(solAmount) {
     
     let xposureAmount;
     
-    // SIMPLIFIED: Just use Jupiter directly since it works for all tokens
-    // PumpPortal is returning 400 errors and PumpSwap domain is expired
-    console.log("🪐 Using Jupiter for token purchase...");
-    xposureAmount = await buyOnJupiter(solAmount);
+    // Try direct bonding curve interaction (works without external APIs)
+    console.log("🎯 Using direct bonding curve buy (like sniper bots)...");
+    xposureAmount = await buyDirectFromBondingCurve(solAmount);
     
     console.log(`✅ Purchase complete! ${xposureAmount.toLocaleString()} XPOSURE now in treasury`);
     console.log(`🔄 ===================================\n`);
