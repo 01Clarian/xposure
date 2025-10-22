@@ -370,10 +370,27 @@ async function checkIfBonded() {
 }
 
 // === PUMP.FUN BUY (Using PumpPortal API) ===
+// Documentation: https://pumpportal.fun/api/trade-local
 async function buyOnPumpFun(solAmount) {
   try {
     console.log(`🚀 Starting pump.fun buy with PumpPortal API: ${solAmount.toFixed(4)} SOL`);
     console.log(`📍 Buying to treasury, will split XPOSURE after...`);
+    
+    // Get treasury balance BEFORE purchase for accurate tracking
+    const treasuryTokenAccount = await getAssociatedTokenAddress(
+      TOKEN_MINT,
+      TREASURY_KEYPAIR.publicKey
+    );
+    
+    let balanceBefore = 0;
+    try {
+      const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
+      balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
+      console.log(`💰 Treasury balance BEFORE: ${balanceBefore.toLocaleString()} XPOSURE`);
+    } catch (e) {
+      console.log(`💰 Treasury balance BEFORE: 0 XPOSURE (account doesn't exist yet)`);
+      balanceBefore = 0;
+    }
     
     // Get transaction from PumpPortal
     console.log("📊 Getting PumpPortal transaction...");
@@ -424,29 +441,17 @@ async function buyOnPumpFun(solAmount) {
     
     console.log(`✅ Pump.fun buy complete!`);
     
-    // Get treasury token account
-    const treasuryTokenAccount = await getAssociatedTokenAddress(
-      TOKEN_MINT,
-      TREASURY_KEYPAIR.publicKey
-    );
-    
-    // Get balance BEFORE was stored, now get AFTER
-    // Wait for balance update
+    // Get balance AFTER purchase
     await new Promise(r => setTimeout(r, 3000));
     
     const afterBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
     const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
     
-    // For PumpPortal, we can't get balance before easily, so use a workaround:
-    // The transaction itself contains the output amount, but we'll use the approach
-    // of just returning what we get. The issue is this returns TOTAL balance.
-    // We need to track this differently.
+    const xposureReceived = balanceAfter - balanceBefore;
+    console.log(`🪙 Treasury received ${xposureReceived.toLocaleString()} XPOSURE`);
+    console.log(`📊 Treasury total balance: ${balanceAfter.toLocaleString()} XPOSURE`);
     
-    console.log(`🪙 Treasury total balance: ${balanceAfter.toLocaleString()} XPOSURE`);
-    console.log(`⚠️ Note: Returning total balance - caller should track balance before purchase`);
-    
-    return balanceAfter;
-
+    return xposureReceived;
     
   } catch (err) {
     console.error(`❌ Pump.fun buy failed: ${err.message}`);
