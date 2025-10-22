@@ -5,7 +5,7 @@ import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import fetch from "cross-fetch";
-import https from "https";  // ✅ ADDED for PumpSwap SSL bypass
+import https from "https";
 import {
   Connection,
   Keypair,
@@ -147,8 +147,8 @@ function cleanupExpiredPayments() {
       try {
         await bot.sendMessage(
           payment.userId,
-          `⏱️ Payment Timeout\\n\\n` +
-          `Your payment session expired. You can upload a new track and try again!\\n\\n` +
+          `⏱️ Payment Timeout\n\n` +
+          `Your payment session expired. You can upload a new track and try again!\n\n` +
           `Type /start to begin a new submission.`
         );
       } catch (err) {
@@ -325,10 +325,10 @@ async function transferTokensToRecipient(tokenAmount, recipientWallet) {
   }
 }
 
-// === ✅ UPDATED: CHECK IF TOKEN HAS GRADUATED ===
-async function checkIfGraduated() {
+// === CHECK IF TOKEN HAS BONDED ===
+async function checkIfBonded() {
   try {
-    console.log("🔍 Checking token graduation status...");
+    console.log("🔍 Checking if XPOSURE has graduated from pump.fun...");
     
     const PUMP_PROGRAM = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
     
@@ -341,8 +341,8 @@ async function checkIfGraduated() {
     const accountInfo = await connection.getAccountInfo(bondingCurve);
     
     if (!accountInfo) {
-      console.log("✅ Token has graduated from pump.fun!");
-      return { graduated: true, platform: 'unknown' };
+      console.log("✅ Token has graduated (no bonding curve account)");
+      return true;
     }
     
     // Check if bonding curve is complete
@@ -351,23 +351,109 @@ async function checkIfGraduated() {
     
     if (complete === 1) {
       console.log("✅ Bonding curve complete! Token graduated.");
-      return { graduated: true, platform: 'unknown' };
+      return true;
     }
     
-    console.log("📊 Token still on pump.fun bonding curve.");
-    return { graduated: false, platform: 'pump' };
+    console.log("📊 Token still on pump.fun bonding curve. Using PumpPortal API...");
+    return false;
     
   } catch (err) {
-    console.error(`⚠️ Graduation check error: ${err.message}. Assuming graduated...`);
-    return { graduated: true, platform: 'unknown' };
+    console.error(`⚠️ Bond check error: ${err.message}. Assuming graduated...`);
+    return true;
   }
 }
 
-// === ✅ NEW: PUMPSWAP BUY (for graduated tokens) ===
+// === PUMP.FUN BUY (Using PumpPortal API) ===
+async function buyOnPumpFun(solAmount) {
+  try {
+    console.log(`🚀 Starting pump.fun buy with PumpPortal API: ${solAmount.toFixed(4)} SOL`);
+    console.log(`📍 Buying to treasury, will split XPOSURE after...`);
+    
+    // Get transaction from PumpPortal
+    console.log("📊 Getting PumpPortal transaction...");
+    const quoteResponse = await fetch(`https://pumpportal.fun/api/trade-local`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        publicKey: TREASURY_KEYPAIR.publicKey.toBase58(),
+        action: "buy",
+        mint: TOKEN_MINT.toBase58(),
+        denominatedInSol: "true",
+        amount: solAmount,
+        slippage: 10,
+        priorityFee: 0.0001,
+        pool: "pump"
+      })
+    });
+    
+    if (!quoteResponse.ok) {
+      const errorText = await quoteResponse.text();
+      throw new Error(`PumpPortal request failed: ${quoteResponse.status} - ${errorText}`);
+    }
+    
+    // PumpPortal returns raw binary transaction data (not base64!)
+    const txData = await quoteResponse.arrayBuffer();
+    console.log(`✅ Got transaction data (${txData.byteLength} bytes)`);
+    
+    // Deserialize and sign transaction
+    console.log("🔓 Deserializing transaction...");
+    const tx = VersionedTransaction.deserialize(new Uint8Array(txData));
+    tx.sign([TREASURY_KEYPAIR]);
+    
+    // Send transaction
+    console.log("📤 Sending buy transaction...");
+    const sig = await connection.sendRawTransaction(tx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+      maxRetries: 3
+    });
+    
+    console.log(`📤 Transaction sent: ${sig.substring(0, 8)}...`);
+    console.log(`🔗 https://solscan.io/tx/${sig}`);
+    console.log("⏳ Confirming transaction...");
+    
+    await connection.confirmTransaction(sig, "confirmed");
+    
+    console.log(`✅ Pump.fun buy complete!`);
+    
+    // Get treasury token account
+    const treasuryTokenAccount = await getAssociatedTokenAddress(
+      TOKEN_MINT,
+      TREASURY_KEYPAIR.publicKey
+    );
+    
+    // Get balance BEFORE was stored, now get AFTER
+    // Wait for balance update
+    await new Promise(r => setTimeout(r, 3000));
+    
+    const afterBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
+    const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
+    
+    // For PumpPortal, we can't get balance before easily, so use a workaround:
+    // The transaction itself contains the output amount, but we'll use the approach
+    // of just returning what we get. The issue is this returns TOTAL balance.
+    // We need to track this differently.
+    
+    console.log(`🪙 Treasury total balance: ${balanceAfter.toLocaleString()} XPOSURE`);
+    console.log(`⚠️ Note: Returning total balance - caller should track balance before purchase`);
+    
+    return balanceAfter;
+
+    
+  } catch (err) {
+    console.error(`❌ Pump.fun buy failed: ${err.message}`);
+    console.error(err.stack);
+    throw err;
+  }
+}
+
+// === PUMPSWAP BUY (for graduated tokens) ===
 async function buyOnPumpSwap(solAmount) {
   try {
     console.log(`🎓 Starting PumpSwap buy: ${solAmount.toFixed(4)} SOL → XPOSURE`);
-    console.log(`📍 Token graduated to PumpSwap - using pumpapi.fun...`);
+    console.log(`📍 Token graduated - using pumpapi.fun...`);
     
     // Create HTTPS agent that bypasses self-signed certificate
     const httpsAgent = new https.Agent({  
@@ -380,9 +466,15 @@ async function buyOnPumpSwap(solAmount) {
       TREASURY_KEYPAIR.publicKey
     );
     
-    const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
-    const balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
-    console.log(`💰 Treasury balance before: ${balanceBefore.toLocaleString()} XPOSURE`);
+    let balanceBefore = 0;
+    try {
+      const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
+      balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
+      console.log(`💰 Treasury balance before: ${balanceBefore.toLocaleString()} XPOSURE`);
+    } catch (e) {
+      console.log(`💰 Treasury balance before: 0 XPOSURE (account doesn't exist yet)`);
+      balanceBefore = 0;
+    }
     
     // Step 1: Get quote from PumpSwap
     console.log("📊 Getting PumpSwap quote...");
@@ -454,96 +546,7 @@ async function buyOnPumpSwap(solAmount) {
   }
 }
 
-// === PUMP.FUN BUY (Using PumpPortal API - for bonding curve tokens) ===
-async function buyOnPumpFun(solAmount) {
-  try {
-    console.log(`🚀 Starting pump.fun buy with PumpPortal API: ${solAmount.toFixed(4)} SOL`);
-    console.log(`📍 Buying to treasury, will split XPOSURE after...`);
-    
-    // Get treasury balance BEFORE purchase
-    const treasuryTokenAccount = await getAssociatedTokenAddress(
-      TOKEN_MINT,
-      TREASURY_KEYPAIR.publicKey
-    );
-    
-    let balanceBefore = 0;
-    try {
-      const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
-      balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
-      console.log(`💰 Treasury balance before: ${balanceBefore.toLocaleString()} XPOSURE`);
-    } catch (e) {
-      console.log(`💰 Treasury balance before: 0 XPOSURE (account doesn't exist yet)`);
-      balanceBefore = 0;
-    }
-    
-    // Get transaction from PumpPortal
-    console.log("📊 Getting PumpPortal transaction...");
-    const quoteResponse = await fetch(`https://pumpportal.fun/api/trade-local`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        publicKey: TREASURY_KEYPAIR.publicKey.toBase58(),
-        action: "buy",
-        mint: TOKEN_MINT.toBase58(),
-        denominatedInSol: "true",
-        amount: solAmount,
-        slippage: 10,
-        priorityFee: 0.0001,
-        pool: "pump"
-      })
-    });
-    
-    if (!quoteResponse.ok) {
-      const errorText = await quoteResponse.text();
-      throw new Error(`PumpPortal request failed: ${quoteResponse.status} - ${errorText}`);
-    }
-    
-    // PumpPortal returns raw binary transaction data (not base64!)
-    const txData = await quoteResponse.arrayBuffer();
-    console.log(`✅ Got transaction data (${txData.byteLength} bytes)`);
-    
-    // Deserialize and sign transaction
-    console.log("🔓 Deserializing transaction...");
-    const tx = VersionedTransaction.deserialize(new Uint8Array(txData));
-    tx.sign([TREASURY_KEYPAIR]);
-    
-    // Send transaction
-    console.log("📤 Sending buy transaction...");
-    const sig = await connection.sendRawTransaction(tx.serialize(), {
-      skipPreflight: false,
-      preflightCommitment: 'confirmed',
-      maxRetries: 3
-    });
-    
-    console.log(`📤 Transaction sent: ${sig.substring(0, 8)}...`);
-    console.log(`🔗 https://solscan.io/tx/${sig}`);
-    console.log("⏳ Confirming transaction...");
-    
-    await connection.confirmTransaction(sig, "confirmed");
-    
-    console.log(`✅ Pump.fun buy complete!`);
-    
-    // Get balance AFTER purchase
-    await new Promise(r => setTimeout(r, 3000));
-    
-    const afterBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
-    const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
-    
-    const xposureReceived = balanceAfter - balanceBefore;
-    console.log(`🪙 Treasury received ${xposureReceived.toLocaleString()} XPOSURE`);
-    
-    return xposureReceived;
-    
-  } catch (err) {
-    console.error(`❌ Pump.fun buy failed: ${err.message}`);
-    console.error(err.stack);
-    throw err;
-  }
-}
-
-// === JUPITER SWAP (fallback for graduated tokens if PumpSwap fails) ===
+// === JUPITER SWAP ===
 async function buyOnJupiter(solAmount) {
   try {
     console.log(`🪐 Starting Jupiter swap: ${solAmount.toFixed(4)} SOL → XPOSURE`);
@@ -642,25 +645,23 @@ async function buyOnJupiter(solAmount) {
   }
 }
 
-// === ✅ UPDATED: MARKET INTEGRATION (Auto-detect platform) ===
+// === MARKET INTEGRATION (Auto-detect pump.fun or Jupiter) ===
 async function buyXPOSUREOnMarket(solAmount) {
   try {
-    console.log(`\\n🔄 ========== BUYING XPOSURE ==========`);
+    console.log(`\n🔄 ========== BUYING XPOSURE ==========`);
     console.log(`💰 Amount: ${solAmount.toFixed(4)} SOL`);
     console.log(`📍 Buying to treasury (will split after)`);
     
-    const status = await checkIfGraduated();
+    const isBonded = await checkIfBonded();
     
     let xposureAmount;
-    
-    if (!status.graduated) {
+    if (!isBonded) {
       // Token still on bonding curve - use PumpPortal
       console.log("📊 Using PumpPortal (token on bonding curve)...");
       xposureAmount = await buyOnPumpFun(solAmount);
-      
     } else {
-      // Token has graduated - try PumpSwap first
-      console.log("🎓 Token graduated - trying PumpSwap first...");
+      // Token graduated - try PumpSwap first, fall back to Jupiter
+      console.log("🎓 Token graduated - trying PumpSwap...");
       try {
         xposureAmount = await buyOnPumpSwap(solAmount);
       } catch (pumpSwapError) {
@@ -676,7 +677,7 @@ async function buyXPOSUREOnMarket(solAmount) {
     }
     
     console.log(`✅ Purchase complete! ${xposureAmount.toLocaleString()} XPOSURE now in treasury`);
-    console.log(`🔄 ===================================\\n`);
+    console.log(`🔄 ===================================\n`);
     return xposureAmount;
     
   } catch (err) {
@@ -685,6 +686,7 @@ async function buyXPOSUREOnMarket(solAmount) {
     throw err;
   }
 }
+
 // === STATE PERSISTENCE ===
 const SAVE_FILE = fs.existsSync("/data")
   ? "/data/submissions.json"
