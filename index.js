@@ -35,7 +35,7 @@ let isShuttingDown = false;
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
-  console.log(\`🧹 Graceful shutdown (\${signal})...\`);
+  console.log(`🧹 Graceful shutdown (${signal})...`);
   saveState();
   console.log("✅ Shutdown complete");
   process.exit(0);
@@ -117,10 +117,10 @@ async function getActualTreasuryBalance() {
     const balance = await connection.getTokenAccountBalance(treasuryTokenAccount);
     const xposureBalance = Math.floor(parseFloat(balance.value.uiAmount || 0));
     
-    console.log(\`🏦 Treasury wallet balance: \${xposureBalance.toLocaleString()} XPOSURE\`);
+    console.log(`🏦 Treasury wallet balance: ${xposureBalance.toLocaleString()} XPOSURE`);
     return xposureBalance;
   } catch (err) {
-    console.log(\`⚠️ Could not fetch treasury balance: \${err.message}\`);
+    console.log(`⚠️ Could not fetch treasury balance: ${err.message}`);
     return actualTreasuryBalance; // Return current tracked value as fallback
   }
 }
@@ -134,7 +134,7 @@ function cleanupExpiredPayments() {
   });
 
   if (expiredPayments.length > 0) {
-    console.log(\`🧹 Cleaning up \${expiredPayments.length} expired pending payments\`);
+    console.log(`🧹 Cleaning up ${expiredPayments.length} expired pending payments`);
     
     // Remove expired payments
     pendingPayments = pendingPayments.filter(p => {
@@ -147,12 +147,12 @@ function cleanupExpiredPayments() {
       try {
         await bot.sendMessage(
           payment.userId,
-          \`⏱️ Payment Timeout\\n\\n\` +
-          \`Your payment session expired. You can upload a new track and try again!\\n\\n\` +
-          \`Type /start to begin a new submission.\`
+          `⏱️ Payment Timeout\\n\\n` +
+          `Your payment session expired. You can upload a new track and try again!\\n\\n` +
+          `Type /start to begin a new submission.`
         );
       } catch (err) {
-        console.log(\`⚠️ Could not notify user \${payment.userId} about expiration\`);
+        console.log(`⚠️ Could not notify user ${payment.userId} about expiration`);
       }
     });
     
@@ -187,12 +187,12 @@ function calculateVotingTime() {
   if (hasAllDurations && totalDuration > 0) {
     // Use actual durations + 1 minute for decision time
     const votingTime = (totalDuration + 60) * 1000; // Convert to milliseconds
-    console.log(\`⏱️ Voting time: \${Math.ceil(votingTime / 60000)} minutes (based on track durations)\`);
+    console.log(`⏱️ Voting time: ${Math.ceil(votingTime / 60000)} minutes (based on track durations)`);
     return votingTime;
   } else {
     // Fallback: 2 minutes per track
     const fallbackTime = uploaders.length * 2 * 60 * 1000;
-    console.log(\`⏱️ Voting time: \${Math.ceil(fallbackTime / 60000)} minutes (fallback: 2 min per track)\`);
+    console.log(`⏱️ Voting time: ${Math.ceil(fallbackTime / 60000)} minutes (fallback: 2 min per track)`);
     return fallbackTime;
   }
 }
@@ -255,7 +255,7 @@ function getWhaleMultiplier(amount) {
 // === TRANSFER TOKENS TO RECIPIENT ===
 async function transferTokensToRecipient(tokenAmount, recipientWallet) {
   try {
-    console.log(\`📤 Initiating token transfer...\`);
+    console.log(`📤 Initiating token transfer...`);
     
     const recipientPubkey = new PublicKey(recipientWallet);
     
@@ -309,17 +309,17 @@ async function transferTokensToRecipient(tokenAmount, recipientWallet) {
     console.log("✍️ Signing transfer transaction...");
     const sig = await connection.sendTransaction(tx, [TREASURY_KEYPAIR]);
     
-    console.log(\`📤 Transfer sent: \${sig.substring(0, 8)}...\`);
-    console.log(\`🔗 https://solscan.io/tx/\${sig}\`);
+    console.log(`📤 Transfer sent: ${sig.substring(0, 8)}...`);
+    console.log(`🔗 https://solscan.io/tx/${sig}`);
     
     await connection.confirmTransaction(sig, "confirmed");
     
-    console.log(\`✅ Transfer confirmed!\`);
+    console.log(`✅ Transfer confirmed!`);
     
     return true;
     
   } catch (err) {
-    console.error(\`❌ Token transfer failed: \${err.message}\`);
+    console.error(`❌ Token transfer failed: ${err.message}`);
     console.error(err.stack);
     return false;
   }
@@ -358,7 +358,7 @@ async function checkIfGraduated() {
     return { graduated: false, platform: 'pump' };
     
   } catch (err) {
-    console.error(\`⚠️ Graduation check error: \${err.message}. Assuming graduated...\`);
+    console.error(`⚠️ Graduation check error: ${err.message}. Assuming graduated...`);
     return { graduated: true, platform: 'unknown' };
   }
 }
@@ -366,8 +366,8 @@ async function checkIfGraduated() {
 // === ✅ NEW: PUMPSWAP BUY (for graduated tokens) ===
 async function buyOnPumpSwap(solAmount) {
   try {
-    console.log(\`🎓 Starting PumpSwap buy: \${solAmount.toFixed(4)} SOL → XPOSURE\`);
-    console.log(\`📍 Token graduated to PumpSwap - using pumpapi.fun...\`);
+    console.log(`🎓 Starting PumpSwap buy: ${solAmount.toFixed(4)} SOL → XPOSURE`);
+    console.log(`📍 Token graduated to PumpSwap - using pumpapi.fun...`);
     
     // Create HTTPS agent that bypasses self-signed certificate
     const httpsAgent = new https.Agent({  
@@ -382,7 +382,7 @@ async function buyOnPumpSwap(solAmount) {
     
     const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
     const balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
-    console.log(\`💰 Treasury balance before: \${balanceBefore.toLocaleString()} XPOSURE\`);
+    console.log(`💰 Treasury balance before: ${balanceBefore.toLocaleString()} XPOSURE`);
     
     // Step 1: Get quote from PumpSwap
     console.log("📊 Getting PumpSwap quote...");
@@ -405,16 +405,16 @@ async function buyOnPumpSwap(solAmount) {
 
     if (!quoteResponse.ok) {
       const errorText = await quoteResponse.text();
-      throw new Error(\`PumpSwap quote failed: \${quoteResponse.status} - \${errorText}\`);
+      throw new Error(`PumpSwap quote failed: ${quoteResponse.status} - ${errorText}`);
     }
 
     const quoteData = await quoteResponse.json();
     
     if (!quoteData.success || !quoteData.transaction) {
-      throw new Error(\`PumpSwap quote failed: \${quoteData.error || 'No transaction returned'}\`);
+      throw new Error(`PumpSwap quote failed: ${quoteData.error || 'No transaction returned'}`);
     }
 
-    console.log(\`✅ PumpSwap quote received\`);
+    console.log(`✅ PumpSwap quote received`);
     
     // Step 2: Deserialize, sign & send transaction
     console.log("🔓 Deserializing transaction...");
@@ -429,13 +429,13 @@ async function buyOnPumpSwap(solAmount) {
       maxRetries: 3
     });
     
-    console.log(\`📤 Transaction sent: \${sig.substring(0, 8)}...\`);
-    console.log(\`🔗 https://solscan.io/tx/\${sig}\`);
+    console.log(`📤 Transaction sent: ${sig.substring(0, 8)}...`);
+    console.log(`🔗 https://solscan.io/tx/${sig}`);
     console.log("⏳ Confirming transaction...");
     
     await connection.confirmTransaction(sig, 'confirmed');
     
-    console.log(\`✅ PumpSwap buy complete!\`);
+    console.log(`✅ PumpSwap buy complete!`);
     
     // Get balance AFTER purchase
     await new Promise(r => setTimeout(r, 3000)); // Wait for balance update
@@ -443,12 +443,12 @@ async function buyOnPumpSwap(solAmount) {
     const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
     
     const xposureReceived = balanceAfter - balanceBefore;
-    console.log(\`🪙 Treasury received \${xposureReceived.toLocaleString()} XPOSURE\`);
+    console.log(`🪙 Treasury received ${xposureReceived.toLocaleString()} XPOSURE`);
     
     return xposureReceived;
     
   } catch (err) {
-    console.error(\`❌ PumpSwap buy failed: \${err.message}\`);
+    console.error(`❌ PumpSwap buy failed: ${err.message}`);
     console.error(err.stack);
     throw err;
   }
@@ -457,8 +457,8 @@ async function buyOnPumpSwap(solAmount) {
 // === PUMP.FUN BUY (Using PumpPortal API - for bonding curve tokens) ===
 async function buyOnPumpFun(solAmount) {
   try {
-    console.log(\`🚀 Starting pump.fun buy with PumpPortal API: \${solAmount.toFixed(4)} SOL\`);
-    console.log(\`📍 Buying to treasury, will split XPOSURE after...\`);
+    console.log(`🚀 Starting pump.fun buy with PumpPortal API: ${solAmount.toFixed(4)} SOL`);
+    console.log(`📍 Buying to treasury, will split XPOSURE after...`);
     
     // Get treasury balance BEFORE purchase
     const treasuryTokenAccount = await getAssociatedTokenAddress(
@@ -470,15 +470,15 @@ async function buyOnPumpFun(solAmount) {
     try {
       const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
       balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
-      console.log(\`💰 Treasury balance before: \${balanceBefore.toLocaleString()} XPOSURE\`);
+      console.log(`💰 Treasury balance before: ${balanceBefore.toLocaleString()} XPOSURE`);
     } catch (e) {
-      console.log(\`💰 Treasury balance before: 0 XPOSURE (account doesn't exist yet)\`);
+      console.log(`💰 Treasury balance before: 0 XPOSURE (account doesn't exist yet)`);
       balanceBefore = 0;
     }
     
     // Get transaction from PumpPortal
     console.log("📊 Getting PumpPortal transaction...");
-    const quoteResponse = await fetch(\`https://pumpportal.fun/api/trade-local\`, {
+    const quoteResponse = await fetch(`https://pumpportal.fun/api/trade-local`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json"
@@ -497,12 +497,12 @@ async function buyOnPumpFun(solAmount) {
     
     if (!quoteResponse.ok) {
       const errorText = await quoteResponse.text();
-      throw new Error(\`PumpPortal request failed: \${quoteResponse.status} - \${errorText}\`);
+      throw new Error(`PumpPortal request failed: ${quoteResponse.status} - ${errorText}`);
     }
     
     // PumpPortal returns raw binary transaction data (not base64!)
     const txData = await quoteResponse.arrayBuffer();
-    console.log(\`✅ Got transaction data (\${txData.byteLength} bytes)\`);
+    console.log(`✅ Got transaction data (${txData.byteLength} bytes)`);
     
     // Deserialize and sign transaction
     console.log("🔓 Deserializing transaction...");
@@ -517,13 +517,13 @@ async function buyOnPumpFun(solAmount) {
       maxRetries: 3
     });
     
-    console.log(\`📤 Transaction sent: \${sig.substring(0, 8)}...\`);
-    console.log(\`🔗 https://solscan.io/tx/\${sig}\`);
+    console.log(`📤 Transaction sent: ${sig.substring(0, 8)}...`);
+    console.log(`🔗 https://solscan.io/tx/${sig}`);
     console.log("⏳ Confirming transaction...");
     
     await connection.confirmTransaction(sig, "confirmed");
     
-    console.log(\`✅ Pump.fun buy complete!\`);
+    console.log(`✅ Pump.fun buy complete!`);
     
     // Get balance AFTER purchase
     await new Promise(r => setTimeout(r, 3000));
@@ -532,12 +532,12 @@ async function buyOnPumpFun(solAmount) {
     const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
     
     const xposureReceived = balanceAfter - balanceBefore;
-    console.log(\`🪙 Treasury received \${xposureReceived.toLocaleString()} XPOSURE\`);
+    console.log(`🪙 Treasury received ${xposureReceived.toLocaleString()} XPOSURE`);
     
     return xposureReceived;
     
   } catch (err) {
-    console.error(\`❌ Pump.fun buy failed: \${err.message}\`);
+    console.error(`❌ Pump.fun buy failed: ${err.message}`);
     console.error(err.stack);
     throw err;
   }
@@ -546,8 +546,8 @@ async function buyOnPumpFun(solAmount) {
 // === JUPITER SWAP (fallback for graduated tokens if PumpSwap fails) ===
 async function buyOnJupiter(solAmount) {
   try {
-    console.log(\`🪐 Starting Jupiter swap: \${solAmount.toFixed(4)} SOL → XPOSURE\`);
-    console.log(\`📍 Buying to treasury, will split XPOSURE after...\`);
+    console.log(`🪐 Starting Jupiter swap: ${solAmount.toFixed(4)} SOL → XPOSURE`);
+    console.log(`📍 Buying to treasury, will split XPOSURE after...`);
     
     const lamports = Math.floor(solAmount * 1e9);
     
@@ -557,28 +557,28 @@ async function buyOnJupiter(solAmount) {
       TREASURY_KEYPAIR.publicKey
     );
     
-    console.log(\`📍 Treasury token account: \${treasuryTokenAccount.toBase58().substring(0, 8)}...\`);
+    console.log(`📍 Treasury token account: ${treasuryTokenAccount.toBase58().substring(0, 8)}...`);
     
     // Get quote from Jupiter
     console.log("📊 Getting Jupiter quote...");
     const quoteResponse = await fetch(
-      \`https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=\${TOKEN_MINT.toBase58()}&amount=\${lamports}&slippageBps=500\`
+      `https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${TOKEN_MINT.toBase58()}&amount=${lamports}&slippageBps=500`
     );
     
     if (!quoteResponse.ok) {
-      throw new Error(\`Jupiter quote request failed: \${quoteResponse.status} \${quoteResponse.statusText}\`);
+      throw new Error(`Jupiter quote request failed: ${quoteResponse.status} ${quoteResponse.statusText}`);
     }
     
     const quoteData = await quoteResponse.json();
     
     if (!quoteData || quoteData.error) {
-      throw new Error(\`Quote failed: \${quoteData?.error || 'Unknown error'}\`);
+      throw new Error(`Quote failed: ${quoteData?.error || 'Unknown error'}`);
     }
     
     // Jupiter returns raw amount - convert to XPOSURE
     const rawOutAmount = parseInt(quoteData.outAmount);
     const outAmount = Math.floor(rawOutAmount / 1_000_000); // Convert to XPOSURE (6 decimals)
-    console.log(\`💎 Quote received: \${outAmount.toLocaleString()} XPOSURE\`);
+    console.log(`💎 Quote received: ${outAmount.toLocaleString()} XPOSURE`);
     
     // Get swap transaction (to treasury's token account)
     console.log("🔨 Building swap transaction...");
@@ -601,7 +601,7 @@ async function buyOnJupiter(solAmount) {
     });
     
     if (!swapResponse.ok) {
-      throw new Error(\`Jupiter swap request failed: \${swapResponse.status} \${swapResponse.statusText}\`);
+      throw new Error(`Jupiter swap request failed: ${swapResponse.status} ${swapResponse.statusText}`);
     }
     
     const swapData = await swapResponse.json();
@@ -624,19 +624,19 @@ async function buyOnJupiter(solAmount) {
       maxRetries: 3
     });
     
-    console.log(\`📤 Transaction sent: \${sig.substring(0, 8)}...\`);
-    console.log(\`🔗 https://solscan.io/tx/\${sig}\`);
+    console.log(`📤 Transaction sent: ${sig.substring(0, 8)}...`);
+    console.log(`🔗 https://solscan.io/tx/${sig}`);
     console.log("⏳ Confirming transaction...");
     
     await connection.confirmTransaction(sig, 'confirmed');
     
-    console.log(\`✅ Jupiter swap complete!\`);
-    console.log(\`🪙 Treasury received \${outAmount.toLocaleString()} XPOSURE tokens (will split next)\`);
+    console.log(`✅ Jupiter swap complete!`);
+    console.log(`🪙 Treasury received ${outAmount.toLocaleString()} XPOSURE tokens (will split next)`);
     
     return outAmount;
     
   } catch (err) {
-    console.error(\`❌ Jupiter swap failed: \${err.message}\`);
+    console.error(`❌ Jupiter swap failed: ${err.message}`);
     console.error(err.stack);
     throw err;
   }
@@ -645,9 +645,9 @@ async function buyOnJupiter(solAmount) {
 // === ✅ UPDATED: MARKET INTEGRATION (Auto-detect platform) ===
 async function buyXPOSUREOnMarket(solAmount) {
   try {
-    console.log(\`\\n🔄 ========== BUYING XPOSURE ==========\`);
-    console.log(\`💰 Amount: \${solAmount.toFixed(4)} SOL\`);
-    console.log(\`📍 Buying to treasury (will split after)\`);
+    console.log(`\\n🔄 ========== BUYING XPOSURE ==========`);
+    console.log(`💰 Amount: ${solAmount.toFixed(4)} SOL`);
+    console.log(`📍 Buying to treasury (will split after)`);
     
     const status = await checkIfGraduated();
     
@@ -664,23 +664,23 @@ async function buyXPOSUREOnMarket(solAmount) {
       try {
         xposureAmount = await buyOnPumpSwap(solAmount);
       } catch (pumpSwapError) {
-        console.error(\`⚠️ PumpSwap failed: \${pumpSwapError.message}\`);
+        console.error(`⚠️ PumpSwap failed: ${pumpSwapError.message}`);
         console.log("🔄 Falling back to Jupiter...");
         try {
           xposureAmount = await buyOnJupiter(solAmount);
         } catch (jupiterError) {
-          console.error(\`❌ Jupiter also failed: \${jupiterError.message}\`);
-          throw new Error(\`All swap methods failed. PumpSwap: \${pumpSwapError.message}, Jupiter: \${jupiterError.message}\`);
+          console.error(`❌ Jupiter also failed: ${jupiterError.message}`);
+          throw new Error(`All swap methods failed. PumpSwap: ${pumpSwapError.message}, Jupiter: ${jupiterError.message}`);
         }
       }
     }
     
-    console.log(\`✅ Purchase complete! \${xposureAmount.toLocaleString()} XPOSURE now in treasury\`);
-    console.log(\`🔄 ===================================\\n\`);
+    console.log(`✅ Purchase complete! ${xposureAmount.toLocaleString()} XPOSURE now in treasury`);
+    console.log(`🔄 ===================================\\n`);
     return xposureAmount;
     
   } catch (err) {
-    console.error(\`❌ Market buy failed: \${err.message}\`);
+    console.error(`❌ Market buy failed: ${err.message}`);
     console.error(err.stack);
     throw err;
   }
