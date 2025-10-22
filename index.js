@@ -652,28 +652,30 @@ async function buyXPOSUREOnMarket(solAmount) {
     console.log(`💰 Amount: ${solAmount.toFixed(4)} SOL`);
     console.log(`📍 Buying to treasury (will split after)`);
     
-    const isBonded = await checkIfBonded();
-    
     let xposureAmount;
+    let isBonded = false;
+    
+    try {
+      isBonded = await checkIfBonded();
+    } catch (bondCheckError) {
+      console.log(`⚠️ Bond check failed: ${bondCheckError.message}, defaulting to graduated`);
+      isBonded = true;
+    }
+    
     if (!isBonded) {
-      // Token still on bonding curve - use PumpPortal
-      console.log("📊 Using PumpPortal (token on bonding curve)...");
-      xposureAmount = await buyOnPumpFun(solAmount);
-    } else {
-      // Token graduated - try PumpSwap first, fall back to Jupiter
-      console.log("🎓 Token graduated - trying PumpSwap...");
+      // Token still on bonding curve - try PumpPortal with fallback
+      console.log("📊 Token on bonding curve - trying PumpPortal...");
       try {
-        xposureAmount = await buyOnPumpSwap(solAmount);
-      } catch (pumpSwapError) {
-        console.error(`⚠️ PumpSwap failed: ${pumpSwapError.message}`);
-        console.log("🔄 Falling back to Jupiter...");
-        try {
-          xposureAmount = await buyOnJupiter(solAmount);
-        } catch (jupiterError) {
-          console.error(`❌ Jupiter also failed: ${jupiterError.message}`);
-          throw new Error(`All swap methods failed. PumpSwap: ${pumpSwapError.message}, Jupiter: ${jupiterError.message}`);
-        }
+        xposureAmount = await buyOnPumpFun(solAmount);
+      } catch (pumpError) {
+        console.error(`⚠️ PumpPortal failed: ${pumpError.message}`);
+        console.log("🔄 PumpPortal failed, falling back to Jupiter...");
+        xposureAmount = await buyOnJupiter(solAmount);
       }
+    } else {
+      // Token graduated - use Jupiter directly (most reliable)
+      console.log("🎓 Token graduated - using Jupiter...");
+      xposureAmount = await buyOnJupiter(solAmount);
     }
     
     console.log(`✅ Purchase complete! ${xposureAmount.toLocaleString()} XPOSURE now in treasury`);
