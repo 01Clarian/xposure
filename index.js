@@ -4,6 +4,7 @@ import fs from "fs";
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import fetch from "cross-fetch";
 import {
   Connection,
   Keypair,
