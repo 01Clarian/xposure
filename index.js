@@ -110,10 +110,10 @@ async function getActualTreasuryBalance() {
     );
     
     const balance = await connection.getTokenAccountBalance(treasuryTokenAccount);
-    const sunoBalance = Math.floor(parseFloat(balance.value.uiAmount || 0));
+    const xposureBalance = Math.floor(parseFloat(balance.value.uiAmount || 0));
     
-    console.log(`🏦 Treasury wallet balance: ${sunoBalance.toLocaleString()} XPOSURE`);
-    return sunoBalance;
+    console.log(`🏦 Treasury wallet balance: ${xposureBalance.toLocaleString()} XPOSURE`);
+    return xposureBalance;
   } catch (err) {
     console.log(`⚠️ Could not fetch treasury balance: ${err.message}`);
     return actualTreasuryBalance; // Return current tracked value as fallback
@@ -512,26 +512,26 @@ async function buyXPOSUREOnMarket(solAmount) {
     
     const isBonded = await checkIfBonded();
     
-    let sunoAmount;
+    let xposureAmount;
     if (isBonded) {
       // Use Jupiter
       console.log("📊 Using Jupiter (token graduated)...");
-      sunoAmount = await buyOnJupiter(solAmount);
+      xposureAmount = await buyOnJupiter(solAmount);
     } else {
       // Try pump.fun, fallback to Jupiter if it fails
       console.log("📊 Trying PumpPortal (token on bonding curve)...");
       try {
-        sunoAmount = await buyOnPumpFun(solAmount);
+        xposureAmount = await buyOnPumpFun(solAmount);
       } catch (pumpError) {
         console.error(`⚠️ PumpPortal failed: ${pumpError.message}`);
         console.log("🔄 Falling back to Jupiter...");
-        sunoAmount = await buyOnJupiter(solAmount);
+        xposureAmount = await buyOnJupiter(solAmount);
       }
     }
     
-    console.log(`✅ Purchase complete! ${sunoAmount.toLocaleString()} XPOSURE now in treasury`);
+    console.log(`✅ Purchase complete! ${xposureAmount.toLocaleString()} XPOSURE now in treasury`);
     console.log(`🔄 ===================================\n`);
-    return sunoAmount;
+    return xposureAmount;
     
   } catch (err) {
     console.error(`❌ Market buy failed: ${err.message}`);
@@ -781,7 +781,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
       }
       
       console.log("✅ Error notification sent - returning error to client\n");
-      return res.json({ ok: false, error: "XPOSURE purchase failed", sunoAmount: 0 });
+      return res.json({ ok: false, error: "XPOSURE purchase failed", xposureAmount: 0 });
     }
 
     // === SPLIT XPOSURE TOKENS ===
@@ -806,7 +806,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
           `❌ Transfer Failed!\n\n⚠️ XPOSURE purchase succeeded but transfer to your wallet failed.\n\nPlease contact support.`
         );
       } catch (e) {}
-      return res.json({ ok: false, error: "Transfer failed", sunoAmount: 0 });
+      return res.json({ ok: false, error: "Transfer failed", xposureAmount: 0 });
     }
 
     console.log(`✅ ${userXPOSURE.toLocaleString()} XPOSURE → ${senderWallet.substring(0, 8)}...`);
@@ -830,7 +830,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
       userId: userKey,
       wallet: senderWallet,
       amount: amountNum,
-      sunoReceived: userXPOSURE,
+      xposureReceived: userXPOSURE,
       tier: tier.name,
       tierBadge: tier.badge,
       retention: (retention * 100).toFixed(0) + "%",
@@ -967,7 +967,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
     saveState();
 
     console.log("✅ Payment processing complete - returning success to client\n");
-    res.json({ ok: true, sunoAmount: userXPOSURE });
+    res.json({ ok: true, xposureAmount: userXPOSURE });
   } catch (err) {
     console.error(`\n💥 FATAL ERROR in confirm-payment: ${err.message}`);
     console.error(err.stack);
@@ -1024,7 +1024,7 @@ async function startNewCycle() {
   nextPhaseTime = cycleStartTime + 5 * 60 * 1000;
   saveState();
 
-  const botUsername = process.env.BOT_USERNAME || '@sunobattles_bot';
+  const botUsername = process.env.BOT_USERNAME || '@xposure_overlord_bot';
   const treasuryBonus = calculateTreasuryBonus();
   
   const prizePoolText = treasuryXPOSURE === 0 && actualTreasuryBalance === 0 ? "Loading..." : `${treasuryXPOSURE.toLocaleString()} XPOSURE`;
