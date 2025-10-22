@@ -1,0 +1,24 @@
+{
+  "name": "sunolabs-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SunoLabs Telegram Bot with Buy SUNO functionality",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "@solana/web3.js": "^1.95.8",
+    "@solana/spl-token": "^0.4.9",
+    "@pump-fun/pump-sdk": "^1.0.0",
+    "bn.js": "^5.2.1",
+    "bs58": "^6.0.0",
+     "express-rate-limit": "^7.1.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
