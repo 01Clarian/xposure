@@ -407,7 +407,7 @@ async function buyOnPumpFun(solAmount) {
         amount: solAmount,
         slippage: 10,
         priorityFee: 0.0001,
-        pool: "pump"
+        pool: "auto"  // Auto-detect pump.fun or Raydium
       })
     });
     
@@ -776,7 +776,7 @@ async function buyDirectFromBondingCurve(solAmount) {
   }
 }
 
-// === MARKET INTEGRATION (Direct bonding curve for pump.fun tokens) ===
+// === MARKET INTEGRATION (Uses PumpPortal API with auto pool detection) ===
 async function buyXPOSUREOnMarket(solAmount) {
   try {
     console.log(`\n🔄 ========== BUYING XPOSURE ==========`);
@@ -785,9 +785,9 @@ async function buyXPOSUREOnMarket(solAmount) {
     
     let xposureAmount;
     
-    // Try direct bonding curve interaction (works without external APIs)
-    console.log("🎯 Using direct bonding curve buy (like sniper bots)...");
-    xposureAmount = await buyDirectFromBondingCurve(solAmount);
+    // Use PumpPortal API with auto pool detection (handles pump.fun AND graduated tokens)
+    console.log("🚀 Using PumpPortal API with auto pool detection...");
+    xposureAmount = await buyOnPumpFun(solAmount);
     
     console.log(`✅ Purchase complete! ${xposureAmount.toLocaleString()} XPOSURE now in treasury`);
     console.log(`🔄 ===================================\n`);
