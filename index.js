@@ -669,13 +669,25 @@ async function buyXPOSUREOnMarket(solAmount) {
         xposureAmount = await buyOnPumpFun(solAmount);
       } catch (pumpError) {
         console.error(`⚠️ PumpPortal failed: ${pumpError.message}`);
-        console.log("🔄 PumpPortal failed, falling back to Jupiter...");
-        xposureAmount = await buyOnJupiter(solAmount);
+        console.log("🔄 Falling back to PumpSwap...");
+        try {
+          xposureAmount = await buyOnPumpSwap(solAmount);
+        } catch (pumpSwapError) {
+          console.error(`⚠️ PumpSwap also failed: ${pumpSwapError.message}`);
+          console.log("🔄 Final fallback to Jupiter...");
+          xposureAmount = await buyOnJupiter(solAmount);
+        }
       }
     } else {
-      // Token graduated - use Jupiter directly (most reliable)
-      console.log("🎓 Token graduated - using Jupiter...");
-      xposureAmount = await buyOnJupiter(solAmount);
+      // Token graduated to Raydium - use PumpSwap first (designed for graduated pump.fun tokens)
+      console.log("🎓 Token graduated - trying PumpSwap (Raydium)...");
+      try {
+        xposureAmount = await buyOnPumpSwap(solAmount);
+      } catch (pumpSwapError) {
+        console.error(`⚠️ PumpSwap failed: ${pumpSwapError.message}`);
+        console.log("🔄 Falling back to Jupiter...");
+        xposureAmount = await buyOnJupiter(solAmount);
+      }
     }
     
     console.log(`✅ Purchase complete! ${xposureAmount.toLocaleString()} XPOSURE now in treasury`);
