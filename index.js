@@ -341,25 +341,31 @@ async function checkIfBonded() {
     const accountInfo = await connection.getAccountInfo(bondingCurve);
     
     if (!accountInfo) {
-      console.log("✅ Token has graduated (no bonding curve account)");
+      console.log("✅ Token has graduated (no bonding curve account found)");
       return true;
     }
     
-    // Check if bonding curve is complete
-    const data = accountInfo.data;
-    const complete = data[8];
+    // Check if account has enough data
+    if (!accountInfo.data || accountInfo.data.length < 9) {
+      console.log("✅ Token has graduated (invalid bonding curve data)");
+      return true;
+    }
+    
+    // Check if bonding curve is complete (byte at position 8)
+    const complete = accountInfo.data[8];
     
     if (complete === 1) {
-      console.log("✅ Bonding curve complete! Token graduated.");
+      console.log("✅ Bonding curve complete! Token graduated to Raydium.");
       return true;
     }
     
-    console.log("📊 Token still on pump.fun bonding curve. Using PumpPortal API...");
+    // Additional check: if account exists but complete flag is 0, it's still bonding
+    console.log("📊 Token still on pump.fun bonding curve (complete flag = 0)");
     return false;
     
   } catch (err) {
-    console.error(`⚠️ Bond check error: ${err.message}. Assuming graduated...`);
-    return true;
+    console.error(`⚠️ Bond check error: ${err.message}. Defaulting to graduated (safer)...`);
+    return true; // Default to graduated if check fails
   }
 }
 
@@ -645,7 +651,7 @@ async function buyOnJupiter(solAmount) {
   }
 }
 
-// === MARKET INTEGRATION (Auto-detect pump.fun or Jupiter) ===
+// === MARKET INTEGRATION (SIMPLIFIED - Only use working services) ===
 async function buyXPOSUREOnMarket(solAmount) {
   try {
     console.log(`\n🔄 ========== BUYING XPOSURE ==========`);
@@ -653,42 +659,11 @@ async function buyXPOSUREOnMarket(solAmount) {
     console.log(`📍 Buying to treasury (will split after)`);
     
     let xposureAmount;
-    let isBonded = false;
     
-    try {
-      isBonded = await checkIfBonded();
-    } catch (bondCheckError) {
-      console.log(`⚠️ Bond check failed: ${bondCheckError.message}, defaulting to graduated`);
-      isBonded = true;
-    }
-    
-    if (!isBonded) {
-      // Token still on bonding curve - try PumpPortal with fallback
-      console.log("📊 Token on bonding curve - trying PumpPortal...");
-      try {
-        xposureAmount = await buyOnPumpFun(solAmount);
-      } catch (pumpError) {
-        console.error(`⚠️ PumpPortal failed: ${pumpError.message}`);
-        console.log("🔄 Falling back to PumpSwap...");
-        try {
-          xposureAmount = await buyOnPumpSwap(solAmount);
-        } catch (pumpSwapError) {
-          console.error(`⚠️ PumpSwap also failed: ${pumpSwapError.message}`);
-          console.log("🔄 Final fallback to Jupiter...");
-          xposureAmount = await buyOnJupiter(solAmount);
-        }
-      }
-    } else {
-      // Token graduated to Raydium - use PumpSwap first (designed for graduated pump.fun tokens)
-      console.log("🎓 Token graduated - trying PumpSwap (Raydium)...");
-      try {
-        xposureAmount = await buyOnPumpSwap(solAmount);
-      } catch (pumpSwapError) {
-        console.error(`⚠️ PumpSwap failed: ${pumpSwapError.message}`);
-        console.log("🔄 Falling back to Jupiter...");
-        xposureAmount = await buyOnJupiter(solAmount);
-      }
-    }
+    // SIMPLIFIED: Just use Jupiter directly since it works for all tokens
+    // PumpPortal is returning 400 errors and PumpSwap domain is expired
+    console.log("🪐 Using Jupiter for token purchase...");
+    xposureAmount = await buyOnJupiter(solAmount);
     
     console.log(`✅ Purchase complete! ${xposureAmount.toLocaleString()} XPOSURE now in treasury`);
     console.log(`🔄 ===================================\n`);
@@ -748,6 +723,10 @@ function loadState() {
 
 // === EXPRESS SERVER ===
 const app = express();
+
+// Trust proxy - REQUIRED for Render.com to get real IP addresses
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json({ limit: '10kb' })); // Limit request size
 const PORT = process.env.PORT || 10000;
