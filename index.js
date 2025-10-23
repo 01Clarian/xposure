@@ -165,36 +165,12 @@ setInterval(() => {
   cleanupExpiredPayments();
 }, 2 * 60 * 1000);
 
-// === CALCULATE VOTING TIME ===
+// === CALCULATE VOTING TIME (Fixed 12-hour schedule) ===
 function calculateVotingTime() {
-  const uploaders = participants.filter(p => p.choice === "upload" && p.track);
-  
-  if (uploaders.length === 0) {
-    return 3 * 60 * 1000; // Default 3 minutes if no tracks
-  }
-  
-  let totalDuration = 0;
-  let hasAllDurations = true;
-  
-  for (const uploader of uploaders) {
-    if (uploader.trackDuration && uploader.trackDuration > 0) {
-      totalDuration += uploader.trackDuration;
-    } else {
-      hasAllDurations = false;
-    }
-  }
-  
-  if (hasAllDurations && totalDuration > 0) {
-    // Use actual durations + 1 minute for decision time
-    const votingTime = (totalDuration + 60) * 1000; // Convert to milliseconds
-    console.log(`⏱️ Voting time: ${Math.ceil(votingTime / 60000)} minutes (based on track durations)`);
-    return votingTime;
-  } else {
-    // Fallback: 2 minutes per track
-    const fallbackTime = uploaders.length * 2 * 60 * 1000;
-    console.log(`⏱️ Voting time: ${Math.ceil(fallbackTime / 60000)} minutes (fallback: 2 min per track)`);
-    return fallbackTime;
-  }
+  // Fixed 12-hour voting period
+  const votingTime = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+  console.log(`⏱️ Voting time: 12 hours (fixed schedule)`);
+  return votingTime;
 }
 
 // === TIER CONFIGURATION ===
@@ -1289,7 +1265,7 @@ async function startNewCycle() {
   pendingPayments = [];
   phase = "submission";
   cycleStartTime = Date.now();
-  nextPhaseTime = cycleStartTime + 5 * 60 * 1000;
+  nextPhaseTime = cycleStartTime + 12 * 60 * 60 * 1000; // 12 hours for submission
   // Note: treasuryXPOSURE and actualTreasuryBalance are NOT reset (they persist/grow)
   saveState();
 
@@ -1299,21 +1275,21 @@ async function startNewCycle() {
   const prizePoolText = treasuryXPOSURE === 0 && actualTreasuryBalance === 0 ? "Loading..." : `${treasuryXPOSURE.toLocaleString()} XPOSURE`;
   const bonusPrizeText = actualTreasuryBalance === 0 ? "Loading..." : `+${treasuryBonus.toLocaleString()} XPOSURE (1/500)`;
   
-  console.log(`🎬 NEW CYCLE: Submission phase (5 min), Round pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE, Bonus: ${treasuryBonus.toLocaleString()} XPOSURE`);
+  console.log(`🎬 NEW CYCLE: Submission phase (12 hours), Round pool: ${treasuryXPOSURE.toLocaleString()} XPOSURE, Bonus: ${treasuryBonus.toLocaleString()} XPOSURE`);
   
   try {
     const botMention = botUsername.startsWith('@') ? botUsername : `@${botUsername}`;
     
     await bot.sendMessage(
       `@${MAIN_CHANNEL}`,
-      `🎬 NEW ROUND STARTED!\n\n💰 Prize Pool: Loading...\n🎰 Bonus Prize: ${bonusPrizeText}\n⏰ 5 minutes to join!\n\n🎮 How to Play:\n1️⃣ Open ${botMention}\n2️⃣ Type /start\n3️⃣ Choose your path:\n   🎤 Upload track & compete for prizes\n   🗳️ Vote only & earn rewards\n4️⃣ Buy XPOSURE tokens (0.01 SOL minimum)\n5️⃣ Win XPOSURE prizes! 🏆\n\n🚀 Start now!`
+      `🎬 NEW ROUND STARTED!\n\n💰 Prize Pool: Loading...\n🎰 Bonus Prize: ${bonusPrizeText}\n⏰ 12 hours to submit tracks!\n\n🎮 How to Play:\n1️⃣ Open ${botMention}\n2️⃣ Type /start\n3️⃣ Choose your path:\n   🎤 Upload track & compete for prizes\n   🗳️ Vote only & earn rewards\n4️⃣ Buy XPOSURE tokens (0.01 SOL minimum)\n5️⃣ Win XPOSURE prizes! 🏆\n\n🚀 Start now!`
     );
     console.log("✅ Posted cycle start to main channel");
   } catch (err) {
     console.error("❌ Failed to announce:", err.message);
   }
 
-  setTimeout(() => startVoting(), 5 * 60 * 1000);
+  setTimeout(() => startVoting(), 12 * 60 * 60 * 1000);
 }
 
 // === VOTING ===
@@ -1868,11 +1844,13 @@ app.listen(PORT, async () => {
     console.log("🚀 Starting new cycle in 3 seconds...");
     setTimeout(() => startNewCycle(), 3000);
   } else if (phase === "submission") {
-    const timeLeft = (cycleStartTime + 5 * 60 * 1000) - now;
+    const timeLeft = (cycleStartTime + 12 * 60 * 60 * 1000) - now;
     if (timeLeft <= 0) {
       setTimeout(() => startVoting(), 1000);
     } else {
-      console.log(`⏰ Resuming submission (${Math.ceil(timeLeft / 60000)}m left)`);
+      const hoursLeft = Math.floor(timeLeft / (60 * 60 * 1000));
+      const minutesLeft = Math.ceil((timeLeft % (60 * 60 * 1000)) / 60000);
+      console.log(`⏰ Resuming submission (${hoursLeft}h ${minutesLeft}m left)`);
       setTimeout(() => startVoting(), timeLeft);
     }
   } else if (phase === "voting") {
